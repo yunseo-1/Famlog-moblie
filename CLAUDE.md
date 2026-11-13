@@ -61,8 +61,8 @@ Famlog/
 │  └ src/main/java/com/famlog/
 │     ├ MainActivity.kt
 │     ├ ui/theme/       기본 생성 테마 → core/designsystem으로 대체 예정
-│     ├ core/{network,database,designsystem}       (예정)
-│     └ feature/{chat,calendar,place,album,story,assistant,settings}  (예정)
+│     ├ core/{model,network,database,datastore,designsystem,common}  (예정)
+│     └ feature/{auth,group,chat,calendar,place,album,story,settings}  (예정, 사양서 13.3)
 ├ gradle/, build.gradle.kts, settings.gradle.kts
 ├ CLAUDE.md, .mcp.json  이 파일, MCP 서버 설정 (Figma, Notion)
 └ docs/                spec/(사양서 사본), design/, handoff/  (adr/는 필요 시 추가)
