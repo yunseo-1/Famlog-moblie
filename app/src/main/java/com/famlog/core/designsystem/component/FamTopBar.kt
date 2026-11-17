@@ -1,6 +1,8 @@
 package com.famlog.core.designsystem.component
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -14,6 +16,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import com.famlog.R
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
@@ -24,6 +27,7 @@ fun FamTopBar(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     title: String? = null,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
         modifier = modifier
@@ -39,13 +43,18 @@ fun FamTopBar(
                 tint = FamTheme.colors.textPrimary,
             )
         }
-        if (title != null) {
-            Text(
-                text = title,
-                style = FamTheme.type.titleMedium,
-                color = FamTheme.colors.textPrimary,
-                modifier = Modifier.semantics { heading() },
-            )
+        Box(Modifier.weight(1f)) {
+            if (title != null) {
+                Text(
+                    text = title,
+                    style = FamTheme.type.titleMedium,
+                    color = FamTheme.colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() },
+                )
+            }
         }
+        actions()
     }
 }

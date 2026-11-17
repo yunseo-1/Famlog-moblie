@@ -22,6 +22,9 @@ import kotlinx.serialization.Serializable
     val canGoBack: Boolean = false,
 )
 
+/** SCR-11 그룹 채팅방. 하단 탭 없이 전체 화면 */
+@Serializable data class ChatRoomRoute(val groupId: Long)
+
 /** SCR-03 */
 @Serializable data class RoleSetupRoute(val groupId: Long)
 

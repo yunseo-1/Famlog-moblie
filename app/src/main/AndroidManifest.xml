@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 네트워크가 돌아오면 채팅을 바로 다시 연결한다 (일반 권한, 사용자 동의 없음) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- allowBackup=false: 토큰·캐시가 기기 백업에 들어가지 않게 한다 (사양서 9.5) -->
     <application
