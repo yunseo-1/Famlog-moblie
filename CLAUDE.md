@@ -58,12 +58,20 @@ API는 문서 레포의 `docs/api/openapi.yaml` 계약을 따르고, 계약에 �
 ```
 Famlog/
 ├ app/                 Android 앱 (단일 모듈, 패키지 com.famlog)
-│  └ src/main/java/com/famlog/
-│     ├ MainActivity.kt
-│     ├ ui/theme/       기본 생성 테마 → core/designsystem으로 대체 예정
-│     ├ core/{model,network,database,datastore,designsystem,common}  (예정)
-│     └ feature/{auth,group,chat,calendar,place,album,story,settings}  (예정, 사양서 13.3)
-├ gradle/, build.gradle.kts, settings.gradle.kts
+│  └ src/
+│     ├ main/java/com/famlog/
+│     │  ├ FamlogApp.kt, MainActivity.kt   Hilt 진입점
+│     │  ├ navigation/    하단 탭 5개, 라우트, 세션 만료 시 로그인 이동
+│     │  ├ core/model/    순수 Kotlin 모델 (AuthTokens, ApiError, ErrorCodes)
+│     │  ├ core/common/   디스패처 qualifier
+│     │  ├ core/datastore/  TokenStore(Keystore AES-GCM 암호화), DeviceIdProvider
+│     │  ├ core/network/  Retrofit·OkHttp, AuthInterceptor, TokenAuthenticator(재발급 1회 동기화), SessionEvents
+│     │  ├ core/designsystem/  theme/FamTheme.kt(토큰), component/(FamAppBar, FamBottomNav, …)
+│     │  └ feature/{auth,chat,calendar,place,album,story}/  화면 (group, settings는 S7·S20에서 추가)
+│     ├ debug/          로컬 서버 평문 허용, 요청 로그(BASIC), EXIF 검증 화면 — 릴리스에 포함 안 됨
+│     └ release/        빌드 타입별 네트워크 모듈 (로그 없음)
+├ gradle/, build.gradle.kts, settings.gradle.kts   (버전은 gradle/libs.versions.toml)
+├ .github/workflows/android.yml  PR·main push마다 assembleDebug + testDebugUnitTest
 ├ CLAUDE.md, .mcp.json  이 파일, MCP 서버 설정 (Figma, Notion)
 └ docs/                spec/(사양서 사본), design/, handoff/  (adr/는 필요 시 추가)
 ```
@@ -73,6 +81,10 @@ Famlog/
 - `core/model`과 도메인·데이터 계층에는 Android 의존성(`Context`, `android.*`)을 넣지 않는다 (iOS 확장 대비, 사양서 13 §13.3).
 - 토큰은 Android Keystore로 암호화한 DataStore에 저장한다. 사진은 Photo Picker만, 위치는 포그라운드·대략적 위치 우선 (사양서 08 §8.6, 09 §9.5).
 - targetSdk는 Google Play 요구(API 36 이상)를 만족해야 한다. 현재 설정은 37.
+- 서버 주소는 `BuildConfig.API_BASE_URL`. 디버그는 에뮬레이터에서 로컬 서버(`http://10.0.2.2:8080/api/v1/`)로 간다.
+- 401 처리: `AUTH_TOKEN_EXPIRED`면 `TokenAuthenticator`가 재발급 후 1회 재시도, `AUTH_INVALID`·재발급 실패면 토큰 삭제 후 로그인 화면.
+  재발급을 겹쳐 보내면 서버가 재사용으로 보고 모든 기기를 로그아웃시키므로, 재발급 경로를 따로 만들지 않는다.
+- 화면은 `FamTheme.colors`/`FamTheme.type`/`FamDimens`를 쓴다. Material 3 컴포넌트도 `FamLogTheme`이 토큰 색으로 연결해 둔다.
 
 ## 6. 작업 방식
 
@@ -86,10 +98,14 @@ Famlog/
 - 커밋 메시지: `feat(SCH-02): 구성원별 일정 조회 API` 형식.
 - 작업이 끝나면 `docs/handoff/HANDOFF.md`의 "진행 현황"을 갱신한다.
 
-## 7. 자주 쓰는 명령 (W1에 실제 값으로 채울 것)
+## 7. 자주 쓰는 명령
 
 ```bash
 # 앱 (저장소 루트에서)
 ./gradlew :app:assembleDebug
-./gradlew :app:testDebugUnitTest
+./gradlew :app:testDebugUnitTest            # 단위 테스트 (CI와 같음)
+./gradlew :app:connectedDebugAndroidTest    # Compose UI 테스트 (에뮬레이터·기기 필요)
+./gradlew :app:assembleRelease              # R8 릴리스 빌드 확인 (서명은 S22)
+
+# 로컬 서버 (백엔드 저장소에서): ./gradlew bootRun → http://localhost:8080/v3/api-docs
 ```

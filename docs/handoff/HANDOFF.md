@@ -92,13 +92,32 @@
 이 저장소:
 - [x] 저장소 정리: `CLAUDE.md`·`.mcp.json`·`docs/` 루트 배치, 패키지 `com.famlog`, minSdk 26 / targetSdk 37
 - [x] 사양서 v2.0 사본 → `docs/spec/`, `/feature` 명령
-- [ ] 패키지 골격: `core/{model,network,database,datastore,designsystem,common}`, `feature/*` 빈 화면
-- [ ] Hilt, Compose Material 3, edge-to-edge, 예측형 뒤로가기
-- [ ] `core/designsystem`: `docs/design/compose-theme/FamTheme.kt` + `design-tokens.json` 반영, 기본 `ui/theme/` 제거
-- [ ] 하단 탭 5개(채팅·캘린더·장소·앨범·이야기), 앱 바 "우리 가족 ▾" 자리
-- [ ] Retrofit + 인증 인터셉터(401 시 refresh 1회 재시도), Keystore 암호화 DataStore 토큰 저장
-- [ ] GitHub Actions: `./gradlew assembleDebug testDebugUnitTest`
-- [ ] **기술 검증 스파이크**: Photo Picker로 고른 사진의 EXIF 촬영 시각·GPS가 읽히는지, `ACCESS_MEDIA_LOCATION` 필요 여부 → 결과를 여기에 기록
+- [x] 패키지 골격: `core/{model,network,datastore,designsystem,common}`, `feature/{auth,chat,calendar,place,album,story}` (database는 S10, group·settings는 S7·S20)
+- [x] Hilt, Compose Material 3, edge-to-edge, 예측형 뒤로가기(`enableOnBackInvokedCallback`)
+- [x] `core/designsystem`: `FamTheme.kt` + Material 3 색·글꼴 연결, Noto Sans KR 3종, 기본 `ui/theme/` 제거
+- [x] 하단 탭 5개(채팅·캘린더·장소·앨범·이야기), 앱 바 "우리 가족 ▾" 자리, 앨범·이야기 "곧 만나요"
+- [x] Retrofit + 인증 인터셉터 + `TokenAuthenticator`(재발급 동기화 1회), Keystore 암호화 DataStore 토큰 저장
+- [x] GitHub Actions: `./gradlew :app:assembleDebug :app:testDebugUnitTest` (첫 PR에서 CI 통과 확인 필요)
+- [ ] **기술 검증 스파이크**: 디버그 앱의 "FamLog EXIF" 아이콘으로 실기기에서 확인 → 아래 표에 기록
+
+### EXIF 검증 결과 (실기기에서 채울 것)
+
+| 기기 / Android | Photo Picker 그대로 읽기 (촬영 시각 / GPS) | `ACCESS_MEDIA_LOCATION` 허용 후 | `setRequireOriginal` | 결론 |
+|---|---|---|---|---|
+| (에뮬레이터 API 37) | 화면 실행만 확인, 사진 없음 | - | - | - |
+| | | | | |
+
+판단 기준: Photo Picker 사진에서 GPS를 읽을 수 없다면 ALB-02(여행 앨범)는 서버 워커가 업로드 원본에서 GPS를 읽는 방식(사양서 8.6, S9)으로 간다.
+
+### S6 메모 (S7에서 이어서)
+
+- 앱 시작 화면은 지금 채팅 탭 고정. S7에서 토큰 유무·`lastGroupId`로 로그인 / 그룹 시작(SCR-02) / 마지막 그룹을 고른다.
+- 로그인 화면은 자리만 있다 (`feature/auth/LoginScreen.kt`). 세션 만료 이벤트가 오면 이 화면으로 간다.
+- 백엔드 인수인계(S0~S5) 중 S7에서 반영할 것: 로그인 응답 404 `USER_NOT_REGISTERED` → 약관·닉네임·출생연월 화면 후 `/auth/{provider}/signup`,
+  Google `setServerClientId`는 백엔드 `infra/.env`의 웹 클라이언트 ID, 그룹 응답의 `familyRole`이 비어 있으면 SCR-03 안내.
+- 릴리스 서버 주소는 자리 값(`https://api.famlog.invalid/`). S22에서 교체.
+- 폰트 라이선스: `app/src/main/assets/licenses/OFL-NotoSansKR.txt`. 앱 안 오픈소스 라이선스 화면은 S20·S22에서.
+- 문서 레포의 `docs/api/openapi.yaml`이 아직 비어 있다. S7 전에 백엔드에서 생성해 커밋해야 한다.
 
 ## 7. 오픈 이슈
 
@@ -114,4 +133,5 @@
 | 날짜 | 기능 ID | 내용 | 커밋 |
 |---|---|---|---|
 | 2026-11-12 | - | 통합 사양서 v2.0 사본(`docs/spec/`), CLAUDE.md 사양서 v2.0 기준으로 갱신, `/feature` 명령 추가 | docs(spec) |
-| 2026-11-12 | - | CLAUDE.md 패키지 목록을 사양서 13.3에 맞춤, HANDOFF를 모바일 범위·사양서 v2.0 기준으로 정리 | - |
+| 2026-11-12 | - | CLAUDE.md 패키지 목록을 사양서 13.3에 맞춤, HANDOFF를 모바일 범위·사양서 v2.0 기준으로 정리 | docs |
+| 2026-11-15 | S6 | 앱 골격: Hilt·내비게이션·하단 탭, FamTheme, 토큰 저장·재발급, 디버그 EXIF 검증 화면, CI | chore(S6) |

@@ -1,3 +1,23 @@
 <resources>
-    <string name="app_name">Famlog</string>
+    <string name="app_name">FamLog</string>
+
+    <string name="tab_chat">채팅</string>
+    <string name="tab_calendar">캘린더</string>
+    <string name="tab_place">장소</string>
+    <string name="tab_album">앨범</string>
+    <string name="tab_story">이야기</string>
+
+    <string name="app_bar_brand">FamLog</string>
+    <string name="app_bar_current_group_placeholder">우리 가족</string>
+    <string name="app_bar_group_switcher">가족 그룹 바꾸기</string>
+
+    <string name="coming_soon_title">곧 만나요</string>
+    <string name="coming_soon_album">가족 사진을 달마다 모아 보여주는 앨범을 준비하고 있어요.</string>
+    <string name="coming_soon_story">한 달의 가족 이야기를 정리해 주는 기능을 준비하고 있어요.</string>
+    <string name="placeholder_chat">가족 채팅이 여기에 보여요.</string>
+    <string name="placeholder_calendar">가족 일정이 여기에 보여요.</string>
+    <string name="placeholder_place">가족이 공유한 장소가 여기에 보여요.</string>
+
+    <string name="login_placeholder_title">다시 로그인해 주세요</string>
+    <string name="login_placeholder_body">로그인 화면은 준비 중이에요.</string>
 </resources>
