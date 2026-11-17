@@ -8,7 +8,6 @@
     <string name="tab_story">이야기</string>
 
     <string name="app_bar_brand">FamLog</string>
-    <string name="app_bar_current_group_placeholder">우리 가족</string>
     <string name="app_bar_group_switcher">가족 그룹 바꾸기</string>
 
     <string name="coming_soon_title">곧 만나요</string>
@@ -18,6 +17,77 @@
     <string name="placeholder_calendar">가족 일정이 여기에 보여요.</string>
     <string name="placeholder_place">가족이 공유한 장소가 여기에 보여요.</string>
 
-    <string name="login_placeholder_title">다시 로그인해 주세요</string>
-    <string name="login_placeholder_body">로그인 화면은 준비 중이에요.</string>
+    <!-- 공통 -->
+    <string name="action_back">뒤로</string>
+    <string name="action_retry">다시 시도</string>
+    <string name="action_confirm">확인</string>
+    <string name="text_length">%1$d/%2$d</string>
+    <string name="error_network">서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.</string>
+    <string name="error_unknown">잠시 후 다시 시도해 주세요.</string>
+
+    <!-- SCR-01 로그인 · 가입 (AUTH-01, AUTH-02) -->
+    <string name="login_tagline">가족 대화 속 일정과 추억을\n함께 챙겨요</string>
+    <string name="login_kakao">카카오 로그인</string>
+    <string name="login_google">Google로 로그인</string>
+    <string name="login_error_social">로그인하지 못했어요. 다시 시도해 주세요.</string>
+    <string name="login_error_not_configured">이 빌드에는 로그인 키가 설정되지 않았어요. (local.properties)</string>
+    <string name="signup_title">처음 오셨네요!\n가족에게 보일 정보를 알려 주세요</string>
+    <string name="signup_agree_all">모두 동의</string>
+    <string name="signup_agree_terms">[필수] 이용약관 동의</string>
+    <string name="signup_agree_privacy">[필수] 개인정보 수집·이용 동의</string>
+    <string name="signup_view_terms">보기</string>
+    <string name="signup_terms_notice_title">약관 전문</string>
+    <string name="signup_terms_notice_body">약관 전문은 정식 출시 전에 이곳에서 볼 수 있어요.</string>
+    <string name="signup_nickname_label">닉네임</string>
+    <string name="signup_nickname_placeholder">가족이 부를 이름</string>
+    <string name="signup_birth_label">출생연월</string>
+    <string name="signup_birth_placeholder">예: 199003</string>
+    <string name="signup_birth_help">만 14세 이상인지 확인하는 데만 써요.</string>
+    <string name="signup_birth_invalid">연도 4자리와 월 2자리로 입력해 주세요.</string>
+    <string name="signup_under_age">만 %1$d세 이상만 가입할 수 있어요. 보호자와 함께 사용하는 기능은 곧 제공돼요.</string>
+    <string name="signup_submit">가입하기</string>
+
+    <!-- SCR-02 그룹 시작 (GRP-01, GRP-02) -->
+    <string name="group_start_title">가족 그룹을 시작해요</string>
+    <string name="group_start_body">새 그룹을 만들어 가족을 초대하거나, 가족에게 받은 초대 코드로 참여하세요.</string>
+    <string name="group_create_action">새 가족 그룹 만들기</string>
+    <string name="group_join_action">초대 코드로 참여하기</string>
+    <string name="group_create_title">새 가족 그룹</string>
+    <string name="group_create_body">만든 사람이 그룹장이 돼요. 가족 단체 채팅방이 함께 생겨요.</string>
+    <string name="group_create_name_label">그룹 이름</string>
+    <string name="group_create_name_placeholder">예: 우리 가족, 외가</string>
+    <string name="group_create_submit">만들기</string>
+    <string name="group_join_title">초대 코드로 참여</string>
+    <string name="group_join_body">가족에게 받은 8자리 코드를 입력하세요.</string>
+    <string name="group_join_code_label">초대 코드</string>
+    <string name="group_join_code_placeholder">예: K7MP-Q2XA</string>
+    <string name="group_join_submit">참여하기</string>
+    <string name="join_error_not_found">초대 코드를 다시 확인해 주세요.</string>
+    <string name="join_error_expired">만료된 초대 코드예요. 가족에게 새 코드를 받아 주세요.</string>
+    <string name="join_error_locked">여러 번 틀려서 잠시 참여할 수 없어요. 10분 뒤에 다시 시도해 주세요.</string>
+
+    <!-- SCR-03 내 가족 역할 (GRP-04) -->
+    <string name="role_setup_title">가족 안에서 나는 누구인가요?</string>
+    <string name="role_setup_body">\'%1$s\'에서 쓰는 정보예요. 그룹마다 따로 정할 수 있어요.</string>
+    <string name="role_setup_role_label">역할</string>
+    <string name="role_setup_title_label">호칭 (선택)</string>
+    <string name="role_setup_title_placeholder">예: 큰아들, 막내</string>
+    <string name="role_setup_color_label">내 캘린더 색</string>
+    <string name="role_setup_color_item">캘린더 색 %1$d</string>
+    <string name="role_setup_submit">시작하기</string>
+    <string name="family_role_father">아빠</string>
+    <string name="family_role_mother">엄마</string>
+    <string name="family_role_son">아들</string>
+    <string name="family_role_daughter">딸</string>
+    <string name="family_role_grandfather">할아버지</string>
+    <string name="family_role_grandmother">할머니</string>
+    <string name="family_role_other">기타</string>
+
+    <!-- SCR-70 그룹 전환 (GRP-03) -->
+    <string name="group_switcher_title">가족 그룹 선택</string>
+    <string name="group_switcher_current">현재 그룹</string>
+    <string name="group_switcher_invite">\'%1$s\'에 가족 초대하기</string>
+    <string name="group_member_count">%1$d명</string>
+    <string name="invite_share_chooser">초대 코드 보내기</string>
+    <string name="invite_share_text">FamLog 가족 그룹 \'%1$s\'에 초대해요.\n앱에서 [초대 코드로 참여하기]를 누르고 아래 코드를 입력하세요.\n\n초대 코드: %2$s\n(7일 동안 쓸 수 있어요)</string>
 </resources>

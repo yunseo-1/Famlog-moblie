@@ -117,7 +117,18 @@
   Google `setServerClientId`는 백엔드 `infra/.env`의 웹 클라이언트 ID, 그룹 응답의 `familyRole`이 비어 있으면 SCR-03 안내.
 - 릴리스 서버 주소는 자리 값(`https://api.famlog.invalid/`). S22에서 교체.
 - 폰트 라이선스: `app/src/main/assets/licenses/OFL-NotoSansKR.txt`. 앱 안 오픈소스 라이선스 화면은 S20·S22에서.
-- 문서 레포의 `docs/api/openapi.yaml`이 아직 비어 있다. S7 전에 백엔드에서 생성해 커밋해야 한다.
+- 문서 레포의 `docs/api/openapi.yaml`이 아직 비어 있다. S7은 `Famlog-BE`의 `AuthDtos`·`GroupDtos` 코드를 계약으로 썼다. S8 전에 생성해 커밋할 것.
+
+### S7 메모 (로그인·그룹)
+
+- 시작 분기 `core/data/StartResolver`: 토큰·사용자 ID 없음 → 로그인 / 그룹 없음 → SCR-02 / 현재 그룹에서 내 `familyRole` 없음 → SCR-03 / 그 외 → 채팅 탭. 서버에 닿지 못하면 [다시 시도].
+- GET /users/me가 없어 로그인 응답의 `user.id`·`lastGroupId`를 `SessionStore`(DataStore)에 저장한다. 현재 그룹은 전환 시 서버 PUT 성공 후 로컬에도 저장(GRP-03 재실행 유지).
+- 소셜 키: `local.properties`에 `FAMLOG_KAKAO_NATIVE_APP_KEY`, `FAMLOG_GOOGLE_WEB_CLIENT_ID`. 콘솔 등록은 **디버그 키**(키 해시 `WXsVqa7rwrbdsirdJT2GSnj0+so=`, SHA-1 `59:7B:…:FA:CA`)만 했다. 릴리스·Play 앱 서명 키는 S22에서 추가 등록.
+- `googleid`는 1.1.1 고정: 1.2.x는 Kotlin 2.4로 빌드돼 현재 Kotlin 2.2.10에서 읽지 못한다. Kotlin을 올릴 때 같이 올린다.
+- 그룹이 1개여도 앱 바 ▾를 보인다(figma-map 2장은 1개면 숨김). 시트에 [가족 초대]·[새 그룹]·[코드 참여]가 있어 다른 진입점이 생기기 전까지 유지.
+- 초대 공유는 **코드만** 글로 보낸다. 서버 링크 도메인(`famlog.app`)을 아직 소유하지 않아 링크를 넣지 않았다. App Links는 도메인 확정 후.
+- 미룬 것: SCR-04 알림 권한(S11), 프로필·그룹 사진(S9, 지금은 첫 글자 아바타), 약관 전문(S22, 지금은 "출시 전 제공" 안내), 로그아웃·기기 관리(S20), GRP-05 구성원 관리 화면.
+- 실제 카카오·Google 로그인 → 가입 → 그룹 만들기/참여 → 역할 → 전환 흐름은 본인 계정으로 에뮬레이터·실기기 확인 필요 (아래 체크리스트).
 
 ## 7. 오픈 이슈
 
@@ -135,3 +146,4 @@
 | 2026-11-12 | - | 통합 사양서 v2.0 사본(`docs/spec/`), CLAUDE.md 사양서 v2.0 기준으로 갱신, `/feature` 명령 추가 | docs(spec) |
 | 2026-11-12 | - | CLAUDE.md 패키지 목록을 사양서 13.3에 맞춤, HANDOFF를 모바일 범위·사양서 v2.0 기준으로 정리 | docs |
 | 2026-11-15 | S6 | 앱 골격: Hilt·내비게이션·하단 탭, FamTheme, 토큰 저장·재발급, 디버그 EXIF 검증 화면, CI | chore(S6) |
+| 2026-11-17 | S7 | 카카오·Google 로그인·가입(SCR-01), 그룹 시작(SCR-02), 내 가족 역할(SCR-03), 그룹 전환 시트(SCR-70), 시작 분기 | feat(AUTH-01) |

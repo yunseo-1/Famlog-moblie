@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,6 +7,14 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
+
+/** 소셜 로그인 키: local.properties → 환경 변수 → 빈 값 순서. 비어 있으면 해당 로그인 버튼이 "설정 필요"를 띄운다 */
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
+}
+fun secret(name: String): String = localProperties.getProperty(name) ?: System.getenv(name) ?: ""
+val kakaoNativeAppKey = secret("FAMLOG_KAKAO_NATIVE_APP_KEY")
+val googleWebClientId = secret("FAMLOG_GOOGLE_WEB_CLIENT_ID")
 
 android {
     namespace = "com.famlog"
@@ -20,6 +30,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"$kakaoNativeAppKey\"")
+        // Google 로그인 ID 토큰의 aud. 백엔드 GOOGLE_CLIENT_ID(웹 클라이언트)와 같은 값
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        // 카카오계정 로그인 후 돌아오는 스킴 kakao{앱 키}://oauth (키가 없으면 쓰이지 않는 값)
+        manifestPlaceholders["kakaoScheme"] = "kakao" + kakaoNativeAppKey.ifBlank { "unset" }
     }
 
     buildTypes {
@@ -66,6 +82,10 @@ dependencies {
     debugImplementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kakao.sdk.user)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
     debugImplementation(libs.androidx.exifinterface)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
