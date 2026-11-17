@@ -11,7 +11,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.famlog.core.designsystem.theme.FamLogTheme
+import com.famlog.core.model.ChatMedia
 import com.famlog.core.model.ChatMessage
+import com.famlog.core.model.LocalMedia
+import com.famlog.core.model.MediaKind
+import com.famlog.core.model.MediaStatus
 import com.famlog.core.model.GroupDetail
 import com.famlog.core.model.GroupRole
 import com.famlog.core.model.GroupSummary
@@ -116,6 +120,42 @@ class ChatScreensTest {
 
         compose.onNodeWithText("이번 토요일 11시에 할머니 댁 가자").performTouchInput { longClick() }
         assertEquals(2L, longPressed?.seq)
+    }
+
+    @Test
+    fun 사진_묶음은_올리는_중_진행과_처리_중_칸_9장_넘으면_더보기를_보인다() {
+        val uploading = message(5, 7, "", MessageType.IMAGE).copy(
+            key = "up", id = null, seq = null, sendState = SendState.SENDING,
+            localMedia = listOf(
+                LocalMedia("content://1", "image/jpeg", 1, MediaKind.IMAGE, mediaId = 1),
+                LocalMedia("content://2", "image/jpeg", 1, MediaKind.IMAGE),
+            ),
+        )
+        val many = message(6, 8, "", MessageType.IMAGE).copy(
+            media = (1L..11L).map { ChatMedia(it, MediaKind.IMAGE, MediaStatus.UPLOADED, null, null, null) },
+        )
+        val video = message(7, 8, "", MessageType.VIDEO).copy(
+            media = listOf(ChatMedia(20, MediaKind.VIDEO, MediaStatus.UPLOADED, null, null, 65)),
+        )
+        compose.setContent {
+            FamLogTheme {
+                ChatRoomContent(
+                    state = ChatRoomUiState(
+                        groupName = "우리 가족", memberCount = 2, members = mapOf(7L to me, 8L to mom), myUserId = 7,
+                        rows = buildChatRows(listOf(many, video, uploading), SeoulZone), today = today,
+                        mediaBaseUrl = "http://server/api/v1/",
+                    ),
+                    onBack = {}, onInputChange = {}, onSend = {}, onCancelReply = {}, onLoadOlder = {},
+                    onLongPress = {}, onReactionClick = { _, _ -> }, onInvite = {}, onAttach = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("올리는 중 1/2").assertExists()
+        compose.onNodeWithText("+2").assertExists()
+        compose.onNodeWithContentDescription("동영상 1:05").assertExists()
+        compose.onNodeWithText("처리 중").assertExists()
+        compose.onNodeWithContentDescription("사진·동영상 보내기").assertExists()
     }
 
     @Test

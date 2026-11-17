@@ -28,6 +28,45 @@ enum class SendState { SENT, SENDING, FAILED }
 
 data class Reaction(val emoji: ReactionEmoji, val userIds: List<Long>)
 
+enum class MediaKind { IMAGE, VIDEO }
+
+/**
+ * 서버 처리 상태. UPLOADED는 워커가 썸네일·GPS 제거 중이라 아직 내려받을 수 없다 → media.updated로 READY가 온다.
+ * 원본은 READY여야 내려받을 수 있다 (그 전에는 GPS가 남아 있을 수 있다).
+ */
+enum class MediaStatus {
+    PENDING_UPLOAD, UPLOADED, READY, FAILED, REJECTED, UNKNOWN;
+
+    companion object {
+        fun of(value: String?): MediaStatus = entries.firstOrNull { it.name == value } ?: UNKNOWN
+    }
+}
+
+/** 서버에 저장된 사진·동영상 (CHAT-05). 파일은 GET /media/{id}/content?variant= 로 받는다 */
+data class ChatMedia(
+    val id: Long,
+    val kind: MediaKind,
+    val status: MediaStatus,
+    val width: Int?,
+    val height: Int?,
+    val durationSec: Int?,
+)
+
+/**
+ * 아직 서버에 올리는 중인 내 파일. [uri]는 Photo Picker가 준 content:// 주소다.
+ * [mediaId]는 complete까지 끝난 뒤에 채운다 (그 전에 실패하면 다음 시도에서 새 업로드 URL을 받는다).
+ */
+data class LocalMedia(
+    val uri: String,
+    val mime: String,
+    val size: Long,
+    val kind: MediaKind,
+    val durationSec: Int? = null,
+    val mediaId: Long? = null,
+) {
+    val uploaded: Boolean get() = mediaId != null
+}
+
 /** 답장 원문 미리보기. 내가 들어오기 전 메시지면 [body]가 null이다 */
 data class ReplyPreview(
     val id: Long,
@@ -57,8 +96,11 @@ data class ChatMessage(
     val deleted: Boolean,
     val sentAt: Instant,
     val sendState: SendState,
+    val media: List<ChatMedia> = emptyList(),
+    val localMedia: List<LocalMedia> = emptyList(),
 ) {
     val isSystem: Boolean get() = type == MessageType.SYSTEM
+    val isMedia: Boolean get() = type == MessageType.IMAGE || type == MessageType.VIDEO
 }
 
 /** 채팅 탭(SCR-10)에 보일 그룹의 마지막 메시지 */

@@ -1,5 +1,8 @@
 package com.famlog.feature.chat
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -82,6 +85,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatRoomScreen(
     onBack: () -> Unit,
+    onOpenMedia: (groupId: Long, messageId: Long, index: Int) -> Unit,
     viewModel: ChatRoomViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -101,6 +105,11 @@ fun ChatRoomScreen(
         }
     }
 
+    // Photo Picker: 권한 없이 고른 파일만 받는다 (사양서 8.6). 한 번에 30개
+    val picker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(MAX_PICK),
+    ) { uris -> viewModel.onMediaPicked(uris.map { it.toString() }) }
+
     var menuTarget by remember { mutableStateOf<ChatMessage?>(null) }
     ChatRoomContent(
         state = state,
@@ -113,6 +122,10 @@ fun ChatRoomScreen(
         onReactionClick = { message, emoji -> viewModel.toggleReaction(message, emoji) },
         onInvite = viewModel::invite,
         snackbarHostState = snackbarHostState,
+        onAttach = {
+            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+        },
+        onOpenMedia = { message, index -> message.id?.let { onOpenMedia(message.groupId, it, index) } },
     )
 
     menuTarget?.let { target ->
@@ -143,6 +156,8 @@ fun ChatRoomContent(
     onInvite: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    onAttach: (() -> Unit)? = null,
+    onOpenMedia: (ChatMessage, Int) -> Unit = { _, _ -> },
 ) {
     val colors = FamTheme.colors
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -186,6 +201,7 @@ fun ChatRoomContent(
                             onLoadOlder = onLoadOlder,
                             onLongPress = onLongPress,
                             onReactionClick = onReactionClick,
+                            onOpenMedia = onOpenMedia,
                             modifier = Modifier.weight(1f),
                         )
                         state.replyTo?.let { reply ->
@@ -200,6 +216,7 @@ fun ChatRoomContent(
                             onValueChange = onInputChange,
                             canSend = state.canSend,
                             onSend = onSend,
+                            onAttach = onAttach,
                         )
                     }
                     SnackbarHost(
@@ -221,6 +238,7 @@ private fun MessageList(
     onLoadOlder: () -> Unit,
     onLongPress: (ChatMessage) -> Unit,
     onReactionClick: (ChatMessage, ReactionEmoji) -> Unit,
+    onOpenMedia: (ChatMessage, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -256,7 +274,7 @@ private fun MessageList(
         items(rows, key = { it.key }, contentType = { it::class }) { row ->
             when (row) {
                 is ChatRow.Date -> DateSeparator(formatDateSeparator(row.date, state.today))
-                is ChatRow.Message -> MessageRow(row, state, onLongPress, onReactionClick)
+                is ChatRow.Message -> MessageRow(row, state, onLongPress, onReactionClick, onOpenMedia)
             }
         }
         if (state.loadingOlder) {
@@ -275,6 +293,7 @@ private fun MessageRow(
     state: ChatRoomUiState,
     onLongPress: (ChatMessage) -> Unit,
     onReactionClick: (ChatMessage, ReactionEmoji) -> Unit,
+    onOpenMedia: (ChatMessage, Int) -> Unit,
 ) {
     val message = row.message
     when {
@@ -290,6 +309,8 @@ private fun MessageRow(
                 myUserId = state.myUserId,
                 onLongPress = { onLongPress(message) },
                 onReactionClick = { onReactionClick(message, it.emoji) },
+                mediaBaseUrl = state.mediaBaseUrl,
+                onOpenMedia = { onOpenMedia(message, it) },
             )
             // 후보 카드가 들어올 자리 (S13). 서버가 CANDIDATE 메시지를 만들면 여기에 카드를 붙인다
             if (message.type == MessageType.CANDIDATE) CandidatePlaceholder()
@@ -455,3 +476,4 @@ private fun Tag(text: String) {
 }
 
 private const val LOAD_OLDER_THRESHOLD = 5
+private const val MAX_PICK = 30

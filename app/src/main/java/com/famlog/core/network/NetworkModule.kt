@@ -26,6 +26,16 @@ annotation class RefreshClient
 @Retention(AnnotationRetention.BINARY)
 annotation class ChatSocketClient
 
+/** 저장소(S3) Presigned URL로 파일을 올리는 클라이언트. 인증 헤더·로그 없음 (URL에 서명이 들어 있다) */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class UploadClient
+
+/** 서버 API 주소 (…/api/v1/) */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ApiBaseUrl
+
 /** 빌드 타입별로 추가하는 인터셉터 (디버그: 로그). src/debug, src/release 의 모듈이 제공한다 */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -93,6 +103,24 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideChatApi(retrofit: Retrofit): ChatApi = retrofit.create(ChatApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMediaApi(retrofit: Retrofit): MediaApi = retrofit.create(MediaApi::class.java)
+
+    @Provides
+    @ApiBaseUrl
+    fun provideApiBaseUrl(): String = BuildConfig.API_BASE_URL
+
+    /** 동영상 500MB까지 올리므로 쓰기 시간 제한을 넉넉히 둔다 */
+    @Provides
+    @Singleton
+    @UploadClient
+    fun provideUploadClient(): OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(5, TimeUnit.MINUTES)
+        .readTimeout(1, TimeUnit.MINUTES)
+        .build()
 
     /** 끊긴 연결은 웹소켓 ping으로 알아챈다. 읽기 시간 제한은 메시지가 뜸한 방에서 끊기지 않게 끈다 */
     @Provides

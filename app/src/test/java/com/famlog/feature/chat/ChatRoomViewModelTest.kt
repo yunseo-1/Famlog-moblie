@@ -10,6 +10,13 @@ import com.famlog.core.model.GroupRole
 import com.famlog.core.model.GroupSummary
 import com.famlog.core.model.Member
 import com.famlog.core.model.MessageType
+import com.famlog.core.model.LocalMedia
+import com.famlog.core.model.MediaKind
+import com.famlog.core.media.MediaInspector
+import com.famlog.core.media.PickedMedia
+import com.famlog.core.designsystem.UiText
+import com.famlog.R
+import app.cash.turbine.test
 import com.famlog.core.model.SendState
 import com.famlog.testing.FakeSessionStore
 import com.famlog.testing.MainDispatcherRule
@@ -47,8 +54,11 @@ class ChatRoomViewModelTest {
     }
     private val clock = Clock.fixed(Instant.parse("2026-11-17T05:00:00Z"), ZoneId.of("Asia/Seoul"))
 
+    private val inspector = mockk<MediaInspector>()
+
     private fun viewModel() = ChatRoomViewModel(
         SavedStateHandle(mapOf("groupId" to GROUP)), chat, groups, FakeSessionStore(userId = ME), clock,
+        inspector, "http://server/api/v1/",
     )
 
     private fun message(seq: Long?, sender: Long, state: SendState = SendState.SENT) = ChatMessage(
@@ -126,6 +136,19 @@ class ChatRoomViewModelTest {
         val failed = viewModel.actionsFor(message(null, ME, SendState.FAILED))
         assertTrue(failed.canRetry && failed.canDiscard)
         assertFalse(failed.canReact || failed.canReply)
+    }
+
+    @Test
+    fun 고른_파일_중_보낼_수_없는_것은_빼고_알린_뒤_나머지를_보낸다() = runTest {
+        val photo = LocalMedia("content://1", "image/jpeg", 10, MediaKind.IMAGE)
+        coEvery { inspector.inspect(listOf("content://1", "content://2")) } returns PickedMedia(listOf(photo), skipped = 1)
+        val viewModel = viewModel()
+
+        viewModel.events.test {
+            viewModel.onMediaPicked(listOf("content://1", "content://2"))
+            assertEquals(ChatRoomEvent.Message(UiText.Res(R.string.chat_media_skipped, listOf(1))), awaitItem())
+        }
+        coVerify { chat.sendMedia(GROUP, listOf(photo)) }
     }
 
     private companion object {

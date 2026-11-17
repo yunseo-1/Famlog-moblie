@@ -20,6 +20,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE `key` = :key")
     suspend fun get(key: String): MessageEntity?
 
+    @Query("SELECT * FROM messages WHERE serverId = :id")
+    suspend fun getByServerId(id: Long): MessageEntity?
+
     @Upsert
     suspend fun upsert(messages: List<MessageEntity>)
 
@@ -30,8 +33,15 @@ interface MessageDao {
     @Query("UPDATE messages SET sendState = :state WHERE `key` = :key AND seq IS NULL")
     suspend fun updateSendState(key: String, state: String)
 
-    @Query("UPDATE messages SET deleted = 1, body = NULL, reactionsJson = '[]' WHERE groupId = :groupId AND serverId = :id")
+    @Query("UPDATE messages SET deleted = 1, body = NULL, reactionsJson = '[]', mediaJson = '[]' WHERE groupId = :groupId AND serverId = :id")
     suspend fun markDeleted(groupId: Long, id: Long)
+
+    @Query("UPDATE messages SET mediaJson = :mediaJson WHERE serverId = :id")
+    suspend fun updateMedia(id: Long, mediaJson: String)
+
+    /** 업로드 진행 (파일마다 mediaId를 채운다) */
+    @Query("UPDATE messages SET localMediaJson = :localMediaJson WHERE `key` = :key AND seq IS NULL")
+    suspend fun updateLocalMedia(key: String, localMediaJson: String)
 
     @Query("UPDATE messages SET reactionsJson = :reactionsJson WHERE serverId = :id")
     suspend fun updateReactions(id: Long, reactionsJson: String)

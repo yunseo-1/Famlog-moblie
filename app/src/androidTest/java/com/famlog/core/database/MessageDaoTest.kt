@@ -81,6 +81,19 @@ class MessageDaoTest {
     }
 
     @Test
+    fun 미디어_처리_결과와_업로드_진행을_저장한다() = runTest {
+        dao.upsert(listOf(row("s1", 1), row("p1", null)))
+
+        dao.updateMedia(id = 101, mediaJson = """[{"id":31,"mediaType":"IMAGE","status":"READY"}]""")
+        dao.updateLocalMedia("p1", """[{"uri":"content://a","mime":"image/jpeg","size":1,"kind":"IMAGE","mediaId":31}]""")
+        dao.updateLocalMedia("s1", "[]") // 서버에 저장된 메시지는 바꾸지 않는다
+
+        assertEquals("""[{"id":31,"mediaType":"IMAGE","status":"READY"}]""", dao.getByServerId(101)?.mediaJson)
+        assertEquals(true, dao.get("p1")?.localMediaJson?.contains("\"mediaId\":31"))
+        assertNull(dao.get("s1")?.localMediaJson)
+    }
+
+    @Test
     fun clearSent는_보내기_전_메시지를_남긴다() = runTest {
         dao.upsert(listOf(row("s1", 1), row("p1", null), row("other", 1, group = 2)))
 

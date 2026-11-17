@@ -22,6 +22,13 @@ class FakeMessageDao : MessageDao {
     override suspend fun maxSeq(groupId: Long): Long? = inGroup(groupId).mapNotNull { it.seq }.maxOrNull()
     override suspend fun minSeq(groupId: Long): Long? = inGroup(groupId).mapNotNull { it.seq }.minOrNull()
     override suspend fun get(key: String): MessageEntity? = rows.value[key]
+    override suspend fun getByServerId(id: Long): MessageEntity? = rows.value.values.firstOrNull { it.serverId == id }
+
+    override suspend fun updateMedia(id: Long, mediaJson: String) =
+        edit({ it.serverId == id }) { it.copy(mediaJson = mediaJson) }
+
+    override suspend fun updateLocalMedia(key: String, localMediaJson: String) =
+        edit({ it.key == key && it.seq == null }) { it.copy(localMediaJson = localMediaJson) }
 
     override suspend fun upsert(messages: List<MessageEntity>) {
         rows.value = rows.value + messages.associateBy { it.key }
@@ -35,7 +42,7 @@ class FakeMessageDao : MessageDao {
 
     override suspend fun markDeleted(groupId: Long, id: Long) =
         edit({ it.groupId == groupId && it.serverId == id }) {
-            it.copy(deleted = true, body = null, reactionsJson = "[]")
+            it.copy(deleted = true, body = null, reactionsJson = "[]", mediaJson = "[]")
         }
 
     override suspend fun updateReactions(id: Long, reactionsJson: String) =

@@ -147,6 +147,23 @@
 - 자리만 만든 것: [신고](MOD-01 API는 S20, 지금은 "곧 제공돼요"), `type=CANDIDATE` 카드 자리(S13), VOICE·PLACE·POLL 등은 "지원하지 않는 메시지".
 - 뺀 것: 채팅 탭 이야기 배너(v1.1)·검색(CHAT-09), 서랍의 사진·링크 모아보기·공지·그룹 설정, 메시지 복사.
 
+### S10-2 메모 (사진·동영상)
+
+- 보내기: 입력창 [+] → Photo Picker(권한 없음, 30개) → `core/media/ContentMediaInspector`가 서버와 같은 기준(사진 jpeg·png·webp·heic·heif 30MB, 동영상 mp4·mov 500MB·5분)으로 거르고 뺀 개수를 알린다.
+  사진은 한 묶음(IMAGE), 동영상은 하나씩(VIDEO) 메시지를 만든다(서버 규칙). Photo Picker 읽기 권한은 `takePersistableUriPermission`으로 유지한다.
+- 업로드: `MediaUploadWorker`(WorkManager, 네트워크 있을 때, 30초부터 지수 백오프, 6번 실패하면 FAILED) → `core/data/MediaUploader`.
+  시도마다 남은 파일만 새 URL 발급 → 응답 headers 그대로 PUT(인증·로그 없는 `@UploadClient`) → complete → 파일별 mediaId를 Room에 남긴다.
+  다 올리면 `ChatRepository.sendIfReady`가 STOMP로 보낸다. 연결이 없으면 대기열에 남아 연결될 때 보낸다 (업로드는 백그라운드에서도, 전송은 앱이 보일 때).
+- 보기: Coil 3이 앱 OkHttp(인증·재발급)로 `GET /media/{id}/content?variant=`를 부르고 302를 따라간다. 다른 호스트로 넘어갈 때 OkHttp가 Authorization을 뗀다.
+  격자는 THUMB_S, 한 장은 THUMB_M, 전체 화면은 THUMB_L. UPLOADED는 "처리 중", `media.updated`가 오면 바뀐다.
+- 동영상 재생: 기본 `VideoView`(사용자 결정). 인증 헤더를 못 넣어서 302의 저장소 주소를 먼저 받아 넘긴다(`MediaUrls.resolve`, 로그 없음).
+- Room 버전 2 (mediaJson·localMediaJson 추가). 캐시라 버전이 바뀌면 지운다 → 업데이트 전에 보내지 못한 메시지도 사라진다.
+- **로컬에서 업로드하려면 백엔드 `infra/.env`에 `S3_PUBLIC_ENDPOINT=http://10.0.2.2:8333`** 를 넣고 서버를 다시 켠다. 비어 있으면 업로드 URL이 localhost라 에뮬레이터에서 실패한다.
+- 에뮬레이터 실기 확인(2026-11-18): 사진 3장 묶음·동영상 업로드 → 처리 중 → 썸네일, 전체 화면 보기, VideoView 재생, 저장된 원본에 GPS 없음.
+  **백엔드에 넘길 것**: 에뮬레이터 카메라 동영상(오디오 AMR-NB)은 워커의 메타데이터 제거 단계(`ffmpeg -c copy -f mp4`)가 실패해 `NOT_A_VIDEO`로 거부된다.
+  mp4에 못 넣는 오디오는 AAC로 바꾸는 처리가 필요 (`Famlog-BE/worker/app/media/videos.py`).
+- 미룬 것: 원본 저장(내려받기), 서랍 사진 모아보기(앨범 단계), 동영상 업로드 중 미리보기 프레임(로컬은 재생 아이콘만), 업로드 진행 알림(포그라운드 서비스).
+
 ## 7. 오픈 이슈
 
 사양서 19장이 기준이다. 모바일에 직접 영향이 있는 것:
@@ -165,3 +182,4 @@
 | 2026-11-15 | S6 | 앱 골격: Hilt·내비게이션·하단 탭, FamTheme, 토큰 저장·재발급, 디버그 EXIF 검증 화면, CI | chore(S6) |
 | 2026-11-17 | S7 | 카카오·Google 로그인·가입(SCR-01), 그룹 시작(SCR-02), 내 가족 역할(SCR-03), 그룹 전환 시트(SCR-70), 시작 분기 | feat(AUTH-01) |
 | 2026-11-18 | S10-1 | 채팅 탭(SCR-10)·채팅방(SCR-11)·서랍(SCR-12), STOMP 실시간, Room 캐시, 오프라인 재전송, 읽음·답장·공감·삭제 | feat(CHAT-02) |
+| 2026-11-18 | S10-2 | 사진·동영상 보내기(Photo Picker 30개, WorkManager 업로드), 묶음·썸네일 표시, 전체 화면 보기·동영상 재생 | feat(CHAT-05) |

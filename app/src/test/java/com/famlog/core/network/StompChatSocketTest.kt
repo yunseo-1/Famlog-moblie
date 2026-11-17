@@ -130,7 +130,7 @@ class StompChatSocketTest {
         val send = next()
         assertEquals("/pub/groups/1/messages", send.header("destination"))
         val body = testJson.decodeFromString(SendMessageRequest.serializer(), send.body)
-        assertEquals(SendMessageRequest("c-1", "TEXT", "안녕", 3), body)
+        assertEquals(SendMessageRequest("c-1", "TEXT", "안녕", replyToId = 3), body)
     }
 
     @Test

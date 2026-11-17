@@ -108,8 +108,6 @@
     <string name="chat_send">보내기</string>
     <string name="chat_message_deleted">삭제된 메시지예요.</string>
     <string name="chat_message_unsupported">지원하지 않는 메시지예요. 앱을 업데이트해 주세요.</string>
-    <string name="chat_message_image">사진을 보냈어요. (사진 보기는 곧 제공돼요)</string>
-    <string name="chat_message_video">동영상을 보냈어요. (동영상 보기는 곧 제공돼요)</string>
     <string name="chat_candidate_placeholder">AI 제안 카드가 여기에 표시돼요.</string>
     <string name="chat_unknown_member">(알 수 없음)</string>
     <string name="chat_me">나</string>
@@ -133,4 +131,17 @@
     <string name="chat_drawer_invite">가족 초대하기</string>
     <string name="chat_role_owner">그룹장</string>
     <string name="chat_role_admin">관리자</string>
+    <!-- 사진·동영상 (S10-2) -->
+    <string name="chat_attach">사진·동영상 보내기</string>
+    <string name="chat_media_skipped">%1$d개는 보낼 수 없어서 뺐어요. 사진(jpeg·png·webp·heic) 30MB, 동영상(mp4·mov) 500MB·5분까지 보낼 수 있어요.</string>
+    <string name="chat_media_uploading">올리는 중 %1$d/%2$d</string>
+    <string name="chat_media_processing">처리 중</string>
+    <string name="chat_media_failed">보낼 수 없는 파일</string>
+    <string name="chat_media_more">+%1$d</string>
+    <string name="chat_media_photo_description">사진 %1$d/%2$d</string>
+    <string name="chat_media_video_description">동영상 %1$s</string>
+    <string name="media_viewer_close">닫기</string>
+    <string name="media_viewer_counter">%1$d / %2$d</string>
+    <string name="media_viewer_not_ready">아직 처리 중이에요. 잠시 후 다시 열어 주세요.</string>
+    <string name="media_viewer_video_error">동영상을 재생하지 못했어요.</string>
 </resources>

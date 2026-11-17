@@ -4,6 +4,9 @@ import com.famlog.core.model.ApiResult
 import com.famlog.core.model.ChatMessage
 import com.famlog.core.model.GroupRole
 import com.famlog.core.model.GroupSummary
+import com.famlog.core.model.LocalMedia
+import com.famlog.core.model.MediaKind
+import com.famlog.core.model.MediaStatus
 import com.famlog.core.model.MessageType
 import com.famlog.core.model.SendState
 import com.famlog.core.network.ChatApi
@@ -13,12 +16,14 @@ import com.famlog.core.network.GroupApi
 import com.famlog.testing.FakeChatSocket
 import com.famlog.testing.FakeMessageDao
 import com.famlog.testing.FakeSessionStore
+import com.famlog.testing.FakeUploadScheduler
 import com.famlog.testing.api
 import com.famlog.testing.jsonResponse
 import com.famlog.testing.testApiCaller
 import com.famlog.testing.testJson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.builtins.ListSerializer
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -37,6 +42,7 @@ class ChatRepositoryTest {
     private val server = MockWebServer()
     private val dao = FakeMessageDao()
     private val socket = FakeChatSocket()
+    private val scheduler = FakeUploadScheduler()
     private val session = FakeSessionStore(userId = ME, currentGroupId = GROUP)
     private val clock = Clock.fixed(Instant.parse("2026-11-17T05:00:00Z"), ZoneId.of("Asia/Seoul"))
     private lateinit var groups: GroupRepository
@@ -47,7 +53,7 @@ class ChatRepositoryTest {
         server.start()
         groups = GroupRepository(server.api<GroupApi>(), testApiCaller(), session)
         repository = ChatRepository(
-            server.api<ChatApi>(), testApiCaller(), dao, socket, session, groups, testJson, clock,
+            server.api<ChatApi>(), testApiCaller(), dao, socket, session, groups, testJson, clock, scheduler,
         )
     }
 
@@ -251,6 +257,91 @@ class ChatRepositoryTest {
         assertEquals(listOf("HEART"), reply.reactions.map { it.emoji.name }) // 모르는 공감은 버린다
         assertEquals(MessageType.POLL, poll.type)
     }
+
+    @Test
+    fun 사진은_한_묶음_동영상은_하나씩_메시지를_만들고_업로드를_맡긴다() = runTest {
+        repository.sendMedia(
+            GROUP,
+            listOf(photo("p1"), video("v1"), photo("p2"), video("v2")),
+        )
+
+        val list = messages()
+        assertEquals(listOf(MessageType.IMAGE, MessageType.VIDEO, MessageType.VIDEO), list.map { it.type })
+        assertEquals(listOf("p1", "p2"), list[0].localMedia.map { it.uri })
+        assertEquals(listOf("v1"), list[1].localMedia.map { it.uri })
+        assertEquals(list.map { it.key }, scheduler.scheduled)
+        assertTrue(socket.sent.isEmpty()) // 다 올리기 전에는 보내지 않는다
+    }
+
+    @Test
+    fun 대기열은_올리는_중인_사진_메시지를_건너뛰고_다_올린_것은_mediaIds와_함께_보낸다() = runTest {
+        repository.sendMedia(GROUP, listOf(photo("p1"), photo("p2")))
+        repository.send(GROUP, "글", replyTo = null)
+        socket.sent.clear()
+        val key = messages().first { it.isMedia }.key
+
+        repository.flushPending { }
+        assertEquals(listOf("TEXT"), socket.sent.map { it.second.type })
+
+        // 업로드가 끝났다
+        dao.updateLocalMedia(
+            key,
+            testJson.encodeToString(
+                ListSerializer(LocalMediaJson.serializer()),
+                listOf(photo("p1").copy(mediaId = 31).toJson(), photo("p2").copy(mediaId = 32).toJson()),
+            ),
+        )
+        repository.sendIfReady(key)
+
+        val (_, request) = socket.sent.last()
+        assertEquals("IMAGE", request.type)
+        assertEquals(listOf(31L, 32L), request.mediaIds)
+        assertNull(request.body)
+    }
+
+    @Test
+    fun 덜_올린_실패_메시지를_다시_보내면_업로드부터_다시_하고_지우면_작업도_취소한다() = runTest {
+        repository.sendMedia(GROUP, listOf(video("v1")))
+        val key = messages().single().key
+        dao.updateSendState(key, SendState.FAILED.name)
+        scheduler.scheduled.clear()
+
+        repository.retry(key)
+        assertEquals(listOf(key), scheduler.scheduled)
+        assertEquals(SendState.SENDING, messages().single().sendState)
+
+        repository.discard(key)
+        assertEquals(listOf(key), scheduler.cancelled)
+        assertTrue(messages().isEmpty())
+    }
+
+    @Test
+    fun 처리_끝_이벤트가_오면_그_사진만_READY로_바뀐다() = runTest {
+        server.enqueue(
+            jsonResponse(
+                """{"items":[{"id":101,"groupId":$GROUP,"seq":1,"senderId":$OTHER,"clientMessageId":"c-1","type":"IMAGE",
+                   "media":[{"id":31,"mediaType":"IMAGE","status":"UPLOADED"},{"id":32,"mediaType":"IMAGE","status":"UPLOADED"}],
+                   "reactions":[],"unreadCount":0,"deleted":false,"sentAt":"2026-11-17T13:00:00+09:00"}],"hasMore":false}""",
+            ),
+        )
+        repository.refresh(GROUP)
+
+        repository.onGroupEvent(
+            GROUP,
+            event(
+                ChatEventTypes.MEDIA_UPDATED,
+                """{"groupId":$GROUP,"messageId":101,"media":{"id":32,"mediaType":"IMAGE","status":"READY","width":1440,"height":1080}}""",
+            ),
+        )
+
+        val media = messages().single().media
+        assertEquals(listOf(MediaStatus.UPLOADED, MediaStatus.READY), media.map { it.status })
+        assertEquals(1440, media[1].width)
+    }
+
+    private fun photo(uri: String) = LocalMedia(uri, "image/jpeg", 100, MediaKind.IMAGE)
+
+    private fun video(uri: String) = LocalMedia(uri, "video/mp4", 1000, MediaKind.VIDEO, durationSec = 12)
 
     private suspend fun groupsWith(vararg summaries: GroupSummary) {
         server.enqueue(
