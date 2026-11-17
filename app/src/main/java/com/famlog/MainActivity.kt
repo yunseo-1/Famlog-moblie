@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.famlog.core.designsystem.theme.FamLogTheme
+import com.famlog.debug.BuildTypeSetup
 import com.famlog.navigation.FamlogNavHost
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -13,6 +14,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        BuildTypeSetup.onCreate(this)
         setContent {
             FamLogTheme {
                 FamlogNavHost()
