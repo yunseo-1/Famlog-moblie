@@ -7,6 +7,7 @@ import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.SocialProvider
 import com.famlog.core.model.errorCode
 import com.famlog.core.network.AccountApi
+import com.famlog.testing.FakeMessageDao
 import com.famlog.testing.FakeSessionStore
 import com.famlog.testing.api
 import com.famlog.testing.errorResponse
@@ -31,13 +32,14 @@ class AuthRepositoryTest {
     private val tokenStore = FakeTokenStore()
     private val session = FakeSessionStore()
     private val deviceId = mockk<DeviceIdProvider> { coEvery { get() } returns "device-1" }
+    private val messageDao = FakeMessageDao()
     private lateinit var repository: AuthRepository
 
     @Before
     fun setUp() {
         server.start()
         repository = AuthRepository(
-            server.api<AccountApi>(), testApiCaller(), tokenStore, session, deviceId, "Google Pixel 9",
+            server.api<AccountApi>(), testApiCaller(), tokenStore, session, deviceId, messageDao, "Google Pixel 9",
         )
     }
 
@@ -62,6 +64,19 @@ class AuthRepositoryTest {
         assertEquals("access-1", tokenStore.tokens?.accessToken)
         assertEquals(42L, session.userId)
         assertEquals(3L, session.currentGroupIdValue)
+    }
+
+    @Test
+    fun 다른_계정으로_로그인하면_채팅_캐시를_비우고_같은_계정이면_남긴다() = runTest {
+        session.saveUser(42, lastGroupId = 3)
+        server.enqueue(jsonResponse(authResponseJson(lastGroupId = "3")))
+        repository.login(SocialProvider.KAKAO, "kakao-access")
+        assertEquals(0, messageDao.clearCount)
+
+        session.saveUser(1, lastGroupId = 3) // 이전 계정
+        server.enqueue(jsonResponse(authResponseJson(lastGroupId = "3")))
+        repository.login(SocialProvider.KAKAO, "kakao-access")
+        assertEquals(1, messageDao.clearCount)
     }
 
     @Test

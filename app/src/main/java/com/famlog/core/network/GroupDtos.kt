@@ -33,6 +33,8 @@ data class GroupSummaryResponse(
     val imageKey: String? = null,
     val memberCount: Long,
     val myRole: String,
+    val lastMessage: LastMessageResponse? = null,
+    val unreadCount: Long = 0,
 )
 
 @Serializable
@@ -68,7 +70,8 @@ private fun groupRoleOf(value: String): GroupRole =
 private fun familyRoleOf(value: String?): FamilyRole? =
     value?.let { v -> FamilyRole.entries.firstOrNull { it.name == v } ?: FamilyRole.OTHER }
 
-fun GroupSummaryResponse.toModel() = GroupSummary(id, name, memberCount.toInt(), groupRoleOf(myRole))
+fun GroupSummaryResponse.toModel() =
+    GroupSummary(id, name, memberCount.toInt(), groupRoleOf(myRole), lastMessage?.toModel(), unreadCount)
 
 fun MemberResponse.toModel() = Member(
     userId = userId,

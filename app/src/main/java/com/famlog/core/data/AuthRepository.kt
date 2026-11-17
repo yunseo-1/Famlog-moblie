@@ -1,6 +1,7 @@
 package com.famlog.core.data
 
 import com.famlog.core.common.DeviceName
+import com.famlog.core.database.MessageDao
 import com.famlog.core.datastore.DeviceIdProvider
 import com.famlog.core.datastore.SessionStore
 import com.famlog.core.datastore.TokenStore
@@ -30,6 +31,7 @@ class AuthRepository @Inject constructor(
     private val tokenStore: TokenStore,
     private val sessionStore: SessionStore,
     private val deviceIdProvider: DeviceIdProvider,
+    private val messageDao: MessageDao,
     @DeviceName private val deviceName: String,
 ) {
 
@@ -58,6 +60,8 @@ class AuthRepository @Inject constructor(
         DeviceRequest(deviceIdProvider.get(), deviceName, AppHeadersInterceptor.PLATFORM_ANDROID)
 
     private suspend fun save(result: ApiResult<AuthResponse>): ApiResult<Unit> = result.map { response ->
+        // 다른 계정으로 들어왔으면 이전 계정의 채팅 캐시를 남기지 않는다
+        if (sessionStore.userId() != response.user.id) messageDao.clear()
         tokenStore.save(AuthTokens(response.tokens.accessToken, response.tokens.refreshToken))
         sessionStore.saveUser(response.user.id, response.user.lastGroupId)
     }

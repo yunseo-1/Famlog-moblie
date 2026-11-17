@@ -63,10 +63,11 @@ Famlog/
 │     │  ├ FamlogApp.kt, MainActivity.kt   Hilt 진입점
 │     │  ├ navigation/    시작 분기(StartRoute), 하단 탭 5개, 그룹 전환 시트, 세션 만료 시 로그인 이동
 │     │  ├ core/model/    순수 Kotlin 모델 (AuthTokens, ApiError, ErrorCodes, ApiResult, Group·Member)
-│     │  ├ core/common/   디스패처·Clock(서울)·기기 이름
+│     │  ├ core/common/   디스패처·앱 범위 CoroutineScope·Clock(서울)·기기 이름·네트워크 복구 알림
 │     │  ├ core/datastore/  TokenStore(Keystore AES-GCM 암호화), SessionStore(사용자 ID·현재 그룹), DeviceIdProvider
-│     │  ├ core/data/     Repository(Auth, Group), StartResolver(시작 분기), AgePolicy — Android 의존성 없음
-│     │  ├ core/network/  Retrofit·OkHttp, AuthInterceptor, TokenAuthenticator(재발급 1회 동기화), SessionEvents
+│     │  ├ core/data/     Repository(Auth, Group, Chat), ChatSync(실시간 연결·재연결), StartResolver, AgePolicy — Android 의존성 없음
+│     │  ├ core/database/ Room 로컬 캐시(채팅 메시지). 서버가 원본이라 스키마가 바뀌면 지우고 다시 받는다
+│     │  ├ core/network/  Retrofit·OkHttp, AuthInterceptor, TokenAuthenticator(재발급 1회 동기화), SessionEvents, ChatSocket(STOMP 직접 구현)
 │     │  ├ core/designsystem/  theme/FamTheme.kt(토큰), component/(FamAppBar, FamBottomNav, …)
 │     │  └ feature/{auth,group,chat,calendar,place,album,story}/  화면 (settings는 S20에서 추가)
 │     ├ debug/          로컬 서버 평문 허용, 요청 로그(BASIC), EXIF 검증 화면 — 릴리스에 포함 안 됨

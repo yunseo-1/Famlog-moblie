@@ -6,6 +6,7 @@ import com.famlog.core.model.FamilyRole
 import com.famlog.core.model.GroupDetail
 import com.famlog.core.model.GroupSummary
 import com.famlog.core.model.Invite
+import com.famlog.core.model.LastMessage
 import com.famlog.core.model.Member
 import com.famlog.core.model.map
 import com.famlog.core.network.ApiCaller
@@ -37,6 +38,10 @@ class GroupRepository @Inject constructor(
     private val _groups = MutableStateFlow<List<GroupSummary>>(emptyList())
     val groups: StateFlow<List<GroupSummary>> = _groups.asStateFlow()
 
+    /** 그룹별 구성원 (채팅 보낸 사람 이름·서랍). [detail]을 부를 때마다 갱신한다 */
+    private val _details = MutableStateFlow<Map<Long, GroupDetail>>(emptyMap())
+    val details: StateFlow<Map<Long, GroupDetail>> = _details.asStateFlow()
+
     val currentGroupId: Flow<Long?> = sessionStore.currentGroupId
 
     val currentGroup: Flow<GroupSummary?> =
@@ -49,6 +54,37 @@ class GroupRepository @Inject constructor(
 
     suspend fun detail(groupId: Long): ApiResult<GroupDetail> =
         caller.call { api.detail(groupId) }.map { it.toModel() }
+            .also { if (it is ApiResult.Success) _details.update { map -> map + (groupId to it.value) } }
+
+    /**
+     * 실시간으로 받은 새 메시지를 채팅 탭 목록에 반영한다 (SCR-10).
+     * 내가 보낸 것·시스템 메시지는 안 읽은 수에 넣지 않는다 (서버 countUnread와 같은 기준).
+     */
+    fun applyNewMessage(groupId: Long, message: LastMessage, countsAsUnread: Boolean) {
+        _groups.update { list ->
+            list.map { group ->
+                if (group.id != groupId || (group.lastMessage?.seq ?: 0) > message.seq) return@map group
+                group.copy(
+                    lastMessage = message,
+                    unreadCount = group.unreadCount + if (countsAsUnread) 1 else 0,
+                )
+            }
+        }
+    }
+
+    fun applyDeleted(groupId: Long, seq: Long) {
+        _groups.update { list ->
+            list.map { group ->
+                val last = group.lastMessage
+                if (group.id == groupId && last?.seq == seq) group.copy(lastMessage = last.copy(deleted = true, body = null)) else group
+            }
+        }
+    }
+
+    /** 채팅방에서 끝까지 읽었다 */
+    fun clearUnread(groupId: Long) {
+        _groups.update { list -> list.map { if (it.id == groupId) it.copy(unreadCount = 0) else it } }
+    }
 
     /** 만든 그룹이 현재 그룹이 된다 (서버도 같은 처리) */
     suspend fun create(name: String): ApiResult<GroupDetail> =

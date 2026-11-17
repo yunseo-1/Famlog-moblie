@@ -1,7 +1,5 @@
 package com.famlog.navigation
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -40,12 +38,13 @@ import com.famlog.core.network.SessionEvent
 import com.famlog.feature.album.AlbumScreen
 import com.famlog.feature.auth.LoginScreen
 import com.famlog.feature.calendar.CalendarScreen
+import com.famlog.feature.chat.ChatRoomScreen
 import com.famlog.feature.chat.ChatScreen
 import com.famlog.feature.group.GroupStartMode
 import com.famlog.feature.group.GroupStartScreen
 import com.famlog.feature.group.GroupSwitcherSheet
 import com.famlog.feature.group.RoleSetupScreen
-import com.famlog.feature.group.normalizeInviteCode
+import com.famlog.feature.group.shareInvite
 import com.famlog.feature.place.PlaceScreen
 import com.famlog.feature.story.StoryScreen
 
@@ -116,7 +115,13 @@ fun FamlogNavHost(
             composable<RoleSetupRoute> {
                 RoleSetupScreen(onDone = { navController.navigateTo(StartDestination.Main) })
             }
-            composable<ChatRoute> { ChatScreen() }
+            composable<ChatRoute> {
+                ChatScreen(
+                    onOpenRoom = { navController.navigate(ChatRoomRoute(it)) },
+                    onNewGroup = { navController.navigate(GroupStartRoute(canGoBack = true)) },
+                )
+            }
+            composable<ChatRoomRoute> { ChatRoomScreen(onBack = { navController.popBackStack() }) }
             composable<CalendarRoute> { CalendarScreen() }
             composable<PlaceRoute> { PlaceScreen() }
             composable<AlbumRoute> { AlbumScreen() }
@@ -211,12 +216,4 @@ private fun NavHostController.navigateTo(destination: StartDestination) {
         popUpTo(graph.id) { inclusive = true }
         launchSingleTop = true
     }
-}
-
-private fun Context.shareInvite(groupName: String, code: String) {
-    val displayCode = normalizeInviteCode(code).chunked(4).joinToString("-")
-    val send = Intent(Intent.ACTION_SEND)
-        .setType("text/plain")
-        .putExtra(Intent.EXTRA_TEXT, getString(R.string.invite_share_text, groupName, displayCode))
-    startActivity(Intent.createChooser(send, getString(R.string.invite_share_chooser)))
 }

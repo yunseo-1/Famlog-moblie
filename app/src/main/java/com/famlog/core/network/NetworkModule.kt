@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -19,6 +20,11 @@ import javax.inject.Singleton
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class RefreshClient
+
+/** 채팅 웹소켓 전용 클라이언트. 토큰은 STOMP CONNECT 헤더로 보내므로 Authenticator·AuthInterceptor가 없다 */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ChatSocketClient
 
 /** 빌드 타입별로 추가하는 인터셉터 (디버그: 로그). src/debug, src/release 의 모듈이 제공한다 */
 @Qualifier
@@ -83,6 +89,25 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideGroupApi(retrofit: Retrofit): GroupApi = retrofit.create(GroupApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideChatApi(retrofit: Retrofit): ChatApi = retrofit.create(ChatApi::class.java)
+
+    /** 끊긴 연결은 웹소켓 ping으로 알아챈다. 읽기 시간 제한은 메시지가 뜸한 방에서 끊기지 않게 끈다 */
+    @Provides
+    @Singleton
+    @ChatSocketClient
+    fun provideChatSocketClient(@RefreshClient client: OkHttpClient): OkHttpClient = client.newBuilder()
+        .readTimeout(0, TimeUnit.MILLISECONDS)
+        .pingInterval(15, TimeUnit.SECONDS)
+        .build()
+
+    /** API 주소(…/api/v1/)와 같은 서버의 /ws. OkHttp는 http(s) 주소로 웹소켓을 연다 */
+    @Provides
+    @ChatSocketUrl
+    fun provideChatSocketUrl(): String =
+        BuildConfig.API_BASE_URL.toHttpUrl().newBuilder().encodedPath("/ws").build().toString()
 
     private fun baseClientBuilder() = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
