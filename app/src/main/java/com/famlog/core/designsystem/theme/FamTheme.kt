@@ -46,6 +46,11 @@ data class FamColors(
     val categoryTodo: Color = Color(0xFF7A4FE0),
     val categoryTodoBg: Color = Color(0xFFF1ECFF),
     val statusDanger: Color = Color(0xFFD93A3A),
+    /** 사진·동영상 전체 화면 보기 배경과 그 위 글자·아이콘 (Figma 미디자인, 사진이 잘 보이도록 검정) */
+    val mediaViewerBackground: Color = Color(0xFF000000),
+    val onMediaViewer: Color = Color(0xFFFFFFFF),
+    /** 사진 위 겹침 (올리는 중·동영상 길이) */
+    val mediaOverlay: Color = Color(0x66000000),
     /**
      * 구성원 캘린더 색 팔레트 12색 (GRP-04). 서버 famlog.group.calendar-palette와 순서·값이 같아야 한다.
      * 앞 4색은 design-tokens.json memberColorSamples, 나머지는 서버 설정의 임시값 (Figma 확정 전).

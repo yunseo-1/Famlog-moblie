@@ -15,7 +15,8 @@ import javax.inject.Singleton
  * 앱 로컬 캐시. 서버가 원본이라 스키마가 바뀌면 지우고 다시 받는다 (마이그레이션 없음).
  * 로그아웃하거나 다른 계정으로 로그인하면 비운다.
  */
-@Database(entities = [MessageEntity::class], version = 1, exportSchema = false)
+/** 2: 사진·동영상 칸 추가 (S10-2) */
+@Database(entities = [MessageEntity::class], version = 2, exportSchema = false)
 abstract class FamlogDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
 }

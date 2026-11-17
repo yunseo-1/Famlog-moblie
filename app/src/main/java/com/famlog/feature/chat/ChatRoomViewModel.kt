@@ -9,6 +9,8 @@ import com.famlog.core.data.GroupRepository
 import com.famlog.core.datastore.SessionStore
 import com.famlog.core.designsystem.UiText
 import com.famlog.core.designsystem.toUiText
+import com.famlog.core.media.MediaInspector
+import com.famlog.core.network.ApiBaseUrl
 import com.famlog.core.model.ApiResult
 import com.famlog.core.model.ChatMessage
 import com.famlog.core.model.GroupRole
@@ -47,6 +49,8 @@ data class ChatRoomUiState(
     val loadingOlder: Boolean = false,
     val hasOlder: Boolean = true,
     val inviting: Boolean = false,
+    /** 사진 주소를 만들 서버 주소 (…/api/v1/) */
+    val mediaBaseUrl: String = "",
 ) {
     val canSend: Boolean get() = input.isNotBlank()
 
@@ -76,6 +80,8 @@ class ChatRoomViewModel @Inject constructor(
     private val groupRepository: GroupRepository,
     private val sessionStore: SessionStore,
     private val clock: Clock,
+    private val mediaInspector: MediaInspector,
+    @ApiBaseUrl private val apiBaseUrl: String,
 ) : ViewModel() {
 
     val groupId: Long = checkNotNull(savedStateHandle["groupId"])
@@ -115,6 +121,7 @@ class ChatRoomViewModel @Inject constructor(
             loadingOlder = local.loadingOlder,
             hasOlder = local.hasOlder,
             inviting = local.inviting,
+            mediaBaseUrl = apiBaseUrl,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatRoomUiState())
 
@@ -155,6 +162,18 @@ class ChatRoomViewModel @Inject constructor(
         if (body.isEmpty()) return
         local.update { it.copy(input = "", replyTo = null) }
         viewModelScope.launch { chatRepository.send(groupId, body, state.replyTo) }
+    }
+
+    /** Photo Picker로 고른 파일 (CHAT-05). 보낼 수 없는 것은 빼고 알린다 */
+    fun onMediaPicked(uris: List<String>) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch {
+            val picked = mediaInspector.inspect(uris)
+            if (picked.skipped > 0) {
+                _events.send(ChatRoomEvent.Message(UiText.Res(R.string.chat_media_skipped, listOf(picked.skipped))))
+            }
+            if (picked.items.isNotEmpty()) chatRepository.sendMedia(groupId, picked.items)
+        }
     }
 
     fun startReply(message: ChatMessage) {

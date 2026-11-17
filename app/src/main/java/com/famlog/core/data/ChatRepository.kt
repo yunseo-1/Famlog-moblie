@@ -7,6 +7,8 @@ import com.famlog.core.model.ApiResult
 import com.famlog.core.model.ChatMessage
 import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.LastMessage
+import com.famlog.core.model.LocalMedia
+import com.famlog.core.model.MediaKind
 import com.famlog.core.model.MessageType
 import com.famlog.core.model.ReactionEmoji
 import com.famlog.core.model.SendState
@@ -17,6 +19,8 @@ import com.famlog.core.network.ChatErrorEvent
 import com.famlog.core.network.ChatEventEnvelope
 import com.famlog.core.network.ChatEventTypes
 import com.famlog.core.network.ChatSocket
+import com.famlog.core.network.MediaResponse
+import com.famlog.core.network.MediaUpdated
 import com.famlog.core.network.MessageDeleted
 import com.famlog.core.network.MessageResponse
 import com.famlog.core.network.ReactionRequest
@@ -63,6 +67,7 @@ class ChatRepository @Inject constructor(
     private val groupRepository: GroupRepository,
     private val json: Json,
     private val clock: Clock,
+    private val uploadScheduler: UploadScheduler,
 ) {
     /** 그룹별로 마지막으로 보낸 읽음 seq. 같은 값을 여러 번 보내지 않는다 */
     private val sentReadSeq = mutableMapOf<Long, Long>()
@@ -91,43 +96,51 @@ class ChatRepository @Inject constructor(
     }
 
     suspend fun send(groupId: Long, body: String, replyTo: ChatMessage?) {
-        val now = clock.millis()
-        val clientMessageId = UUID.randomUUID().toString()
-        val entity = MessageEntity(
-            key = clientMessageId,
-            groupId = groupId,
-            serverId = null,
-            seq = null,
-            senderId = sessionStore.userId(),
-            clientMessageId = clientMessageId,
-            type = MessageType.TEXT.name,
-            body = body,
-            replyToId = replyTo?.id,
-            replyJson = replyTo?.toReplyJson(),
-            reactionsJson = EMPTY_LIST_JSON,
-            unreadCount = 0,
-            deleted = false,
-            sentAtMillis = now,
-            sendState = SendState.SENDING.name,
-            localOrder = now,
-        )
+        val entity = pendingEntity(groupId, MessageType.TEXT, body = body, replyTo = replyTo)
         dao.upsert(listOf(entity))
         trySend(entity)
     }
 
-    /** 실패한 메시지를 같은 clientMessageId로 다시 보낸다 */
-    suspend fun retry(key: String) {
-        val entity = dao.get(key)?.takeIf { it.seq == null } ?: return
-        dao.updateSendState(key, SendState.SENDING.name)
+    /**
+     * 사진·동영상 보내기 (CHAT-05). 사진은 한 묶음(IMAGE, 30장까지), 동영상은 하나씩(VIDEO) 메시지를 만든다 — 서버 규칙.
+     * 캐시에 먼저 넣어 "올리는 중"으로 보이고, 업로드는 [UploadScheduler]가 맡는다. 다 올리면 [sendIfReady]가 보낸다.
+     */
+    suspend fun sendMedia(groupId: Long, items: List<LocalMedia>) {
+        val images = items.filter { it.kind == MediaKind.IMAGE }
+        val videos = items.filter { it.kind == MediaKind.VIDEO }
+        val messages = buildList {
+            if (images.isNotEmpty()) add(pendingEntity(groupId, MessageType.IMAGE, media = images, order = size.toLong()))
+            videos.forEach { add(pendingEntity(groupId, MessageType.VIDEO, media = listOf(it), order = size.toLong())) }
+        }
+        dao.upsert(messages)
+        messages.forEach { uploadScheduler.schedule(it.key) }
+    }
+
+    /** 업로드가 끝난 사진·동영상 메시지를 보낸다. 연결이 없으면 대기열에 남아 연결될 때 보낸다 */
+    suspend fun sendIfReady(key: String) {
+        val entity = dao.get(key)?.takeIf { it.seq == null && it.sendState == SendState.SENDING.name } ?: return
         trySend(entity)
     }
 
-    /** 보내지 못한 메시지를 지운다 */
-    suspend fun discard(key: String) = dao.deletePending(key)
+    /** 실패한 메시지를 같은 clientMessageId로 다시 보낸다. 덜 올린 파일이 있으면 업로드부터 다시 */
+    suspend fun retry(key: String) {
+        val entity = dao.get(key)?.takeIf { it.seq == null } ?: return
+        dao.updateSendState(key, SendState.SENDING.name)
+        if (entity.hasPendingUploads()) uploadScheduler.schedule(key) else trySend(entity)
+    }
 
-    /** 연결되면 대기 중인 메시지를 만든 순서대로 보낸다. 서버 전송 제한(초당 5개)에 걸리지 않게 간격을 둔다 */
+    /** 보내지 못한 메시지를 지운다 */
+    suspend fun discard(key: String) {
+        uploadScheduler.cancel(key)
+        dao.deletePending(key)
+    }
+
+    /**
+     * 연결되면 대기 중인 메시지를 만든 순서대로 보낸다. 서버 전송 제한(초당 5개)에 걸리지 않게 간격을 둔다.
+     * 아직 올리는 중인 사진·동영상 메시지는 건너뛴다 (업로드가 끝나면 [sendIfReady]).
+     */
     suspend fun flushPending(pause: suspend () -> Unit) {
-        dao.pending().forEach { entity ->
+        dao.pending().filterNot { it.hasPendingUploads() }.forEach { entity ->
             if (!trySend(entity)) return
             pause()
         }
@@ -191,6 +204,7 @@ class ChatRepository @Inject constructor(
                 if (read.userId == sessionStore.userId()) groupRepository.clearUnread(groupId)
             }
             ChatEventTypes.REACTION_UPDATED -> event.decode(ReactionsResponse.serializer())?.let { applyReactions(it) }
+            ChatEventTypes.MEDIA_UPDATED -> event.decode(MediaUpdated.serializer())?.let { applyMediaUpdate(it) }
         }
     }
 
@@ -264,13 +278,58 @@ class ChatRepository @Inject constructor(
     }
 
     private fun trySend(entity: MessageEntity): Boolean {
+        val mediaIds = entity.localMediaJson?.let { decode(LOCAL_MEDIA_SERIALIZER, it) }?.mapNotNull { it.mediaId }
         val request = SendMessageRequest(
             clientMessageId = entity.clientMessageId ?: entity.key,
             type = entity.type,
             body = entity.body,
+            mediaIds = mediaIds,
             replyToId = entity.replyToId,
         )
         return socket.send(entity.groupId, request)
+    }
+
+    private fun MessageEntity.hasPendingUploads(): Boolean =
+        localMediaJson?.let { decode(LOCAL_MEDIA_SERIALIZER, it) }?.any { it.mediaId == null } == true
+
+    private suspend fun pendingEntity(
+        groupId: Long,
+        type: MessageType,
+        body: String? = null,
+        replyTo: ChatMessage? = null,
+        media: List<LocalMedia>? = null,
+        order: Long = 0,
+    ): MessageEntity {
+        val now = clock.millis()
+        val clientMessageId = UUID.randomUUID().toString()
+        return MessageEntity(
+            key = clientMessageId,
+            groupId = groupId,
+            serverId = null,
+            seq = null,
+            senderId = sessionStore.userId(),
+            clientMessageId = clientMessageId,
+            type = type.name,
+            body = body,
+            replyToId = replyTo?.id,
+            replyJson = replyTo?.toReplyJson(),
+            reactionsJson = EMPTY_LIST_JSON,
+            unreadCount = 0,
+            deleted = false,
+            sentAtMillis = now,
+            sendState = SendState.SENDING.name,
+            // 한 번에 고른 사진 묶음·동영상은 같은 시각이라 순서를 덧붙인다
+            localOrder = now * 100 + order,
+            localMediaJson = media?.let { list -> encode(LOCAL_MEDIA_SERIALIZER, list.map { it.toJson() }) },
+        )
+    }
+
+    /** media.updated: 처리 끝난 사진·동영상 하나를 그 메시지에서 바꾼다 */
+    private suspend fun applyMediaUpdate(update: MediaUpdated) {
+        val entity = dao.getByServerId(update.messageId) ?: return
+        val media = decode(MEDIA_SERIALIZER, entity.mediaJson).orEmpty()
+            .map { if (it.id == update.media.id) update.media else it }
+        dao.updateMedia(update.messageId, encode(MEDIA_SERIALIZER, media))
     }
 
     private suspend fun applyReactions(response: ReactionsResponse) =
@@ -293,6 +352,7 @@ class ChatRepository @Inject constructor(
         sentAtMillis = parseServerTime(sentAt).toEpochMilli(),
         sendState = SendState.SENT.name,
         localOrder = 0,
+        mediaJson = encode(MEDIA_SERIALIZER, media),
     )
 
     private fun MessageEntity.toModel() = ChatMessage(
@@ -310,6 +370,8 @@ class ChatRepository @Inject constructor(
         deleted = deleted,
         sentAt = Instant.ofEpochMilli(sentAtMillis),
         sendState = SendState.entries.firstOrNull { it.name == sendState } ?: SendState.SENT,
+        media = decode(MEDIA_SERIALIZER, mediaJson).orEmpty().map { it.toModel() },
+        localMedia = localMediaJson?.let { decode(LOCAL_MEDIA_SERIALIZER, it) }.orEmpty().map { it.toModel() },
     )
 
     private fun ChatMessage.toReplyJson(): String? {
@@ -348,5 +410,7 @@ class ChatRepository @Inject constructor(
         private const val EMPTY_LIST_JSON = "[]"
         val DELETE_WINDOW: Duration = Duration.ofMinutes(5)
         private val REACTIONS_SERIALIZER = ListSerializer(ReactionResponse.serializer())
+        private val MEDIA_SERIALIZER = ListSerializer(MediaResponse.serializer())
+        private val LOCAL_MEDIA_SERIALIZER = ListSerializer(LocalMediaJson.serializer())
     }
 }

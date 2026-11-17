@@ -40,6 +40,7 @@ import com.famlog.feature.auth.LoginScreen
 import com.famlog.feature.calendar.CalendarScreen
 import com.famlog.feature.chat.ChatRoomScreen
 import com.famlog.feature.chat.ChatScreen
+import com.famlog.feature.chat.MediaViewerScreen
 import com.famlog.feature.group.GroupStartMode
 import com.famlog.feature.group.GroupStartScreen
 import com.famlog.feature.group.GroupSwitcherSheet
@@ -121,7 +122,15 @@ fun FamlogNavHost(
                     onNewGroup = { navController.navigate(GroupStartRoute(canGoBack = true)) },
                 )
             }
-            composable<ChatRoomRoute> { ChatRoomScreen(onBack = { navController.popBackStack() }) }
+            composable<ChatRoomRoute> {
+                ChatRoomScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenMedia = { groupId, messageId, index ->
+                        navController.navigate(MediaViewerRoute(groupId, messageId, index))
+                    },
+                )
+            }
+            composable<MediaViewerRoute> { MediaViewerScreen(onClose = { navController.popBackStack() }) }
             composable<CalendarRoute> { CalendarScreen() }
             composable<PlaceRoute> { PlaceScreen() }
             composable<AlbumRoute> { AlbumScreen() }

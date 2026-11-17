@@ -20,6 +20,7 @@ data class SendMessageRequest(
     val clientMessageId: String,
     val type: String = "TEXT",
     val body: String? = null,
+    val mediaIds: List<Long>? = null,
     val replyToId: Long? = null,
 )
 
@@ -54,6 +55,7 @@ data class MessageResponse(
     val payload: JsonObject? = null,
     val replyTo: ReplyPreviewResponse? = null,
     val reactions: List<ReactionResponse> = emptyList(),
+    val media: List<MediaResponse> = emptyList(),
     val unreadCount: Int = 0,
     val deleted: Boolean = false,
     val sentAt: String,
@@ -103,6 +105,7 @@ object ChatEventTypes {
     const val MESSAGE_DELETED = "message.deleted"
     const val READ_UPDATED = "read.updated"
     const val REACTION_UPDATED = "reaction.updated"
+    const val MEDIA_UPDATED = "media.updated"
     const val ERROR = "error"
     const val SESSION_REVOKED = "session.revoked"
 }

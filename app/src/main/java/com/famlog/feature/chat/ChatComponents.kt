@@ -98,6 +98,8 @@ fun ChatBubble(
     onLongPress: () -> Unit,
     onReactionClick: (Reaction) -> Unit,
     modifier: Modifier = Modifier,
+    mediaBaseUrl: String = "",
+    onOpenMedia: (index: Int) -> Unit = {},
 ) {
     val colors = FamTheme.colors
     val unknownName = stringResource(R.string.chat_unknown_member)
@@ -124,7 +126,14 @@ fun ChatBubble(
             }
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(FamDimens.xs)) {
                 if (mine) MessageMeta(message, showTime, alignEnd = true)
-                Column(
+                if (message.isMedia && !message.deleted) {
+                    MediaGrid(
+                        message = message,
+                        baseUrl = mediaBaseUrl,
+                        onOpen = onOpenMedia,
+                        onLongPress = onLongPress,
+                    )
+                } else Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(FamDimens.radiusLg))
                         .background(if (mine) colors.bubbleMine else colors.bubbleOther)
@@ -153,8 +162,6 @@ private fun MessageBody(message: ChatMessage) {
     val (text, muted) = when {
         message.deleted -> stringResource(R.string.chat_message_deleted) to true
         message.type == MessageType.TEXT -> message.body.orEmpty() to false
-        message.type == MessageType.IMAGE -> stringResource(R.string.chat_message_image) to true
-        message.type == MessageType.VIDEO -> stringResource(R.string.chat_message_video) to true
         else -> stringResource(R.string.chat_message_unsupported) to true
     }
     Text(
@@ -320,7 +327,7 @@ fun ReplyBar(name: String, body: String, onCancel: () -> Unit, modifier: Modifie
 
 /**
  * Figma Chat Input `4:92`: 상단 1px border, padding 8, gap 8. 입력창(surface/muted, radius full, padding 8/16) · send(brand).
- * plus(사진·동영상)는 S10-2에서 붙인다.
+ * plus = 사진·동영상 보내기 (Photo Picker).
  */
 @Composable
 fun ChatInputBar(
@@ -329,6 +336,7 @@ fun ChatInputBar(
     canSend: Boolean,
     onSend: () -> Unit,
     modifier: Modifier = Modifier,
+    onAttach: (() -> Unit)? = null,
 ) {
     val colors = FamTheme.colors
     Column(modifier.background(colors.bgDefault)) {
@@ -338,6 +346,15 @@ fun ChatInputBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(FamDimens.sm),
         ) {
+            if (onAttach != null) {
+                IconButton(onClick = onAttach) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_plus),
+                        contentDescription = stringResource(R.string.chat_attach),
+                        tint = colors.textSecondary,
+                    )
+                }
+            }
             val placeholder = stringResource(R.string.chat_input_placeholder)
             BasicTextField(
                 value = value,
