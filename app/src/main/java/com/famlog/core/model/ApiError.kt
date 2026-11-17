@@ -13,4 +13,9 @@ object ErrorCodes {
     const val AUTH_INVALID = "AUTH_INVALID"
     const val USER_NOT_REGISTERED = "USER_NOT_REGISTERED"
     const val UPGRADE_REQUIRED = "UPGRADE_REQUIRED"
+    const val AGE_RESTRICTED = "AGE_RESTRICTED"
+    const val NOT_FOUND = "NOT_FOUND"
+    const val INVITE_EXPIRED = "INVITE_EXPIRED"
+    const val RATE_LIMITED = "RATE_LIMITED"
+    const val GROUP_LIMIT_EXCEEDED = "GROUP_LIMIT_EXCEEDED"
 }

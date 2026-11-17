@@ -27,6 +27,9 @@ abstract class DataStoreModule {
     abstract fun bindTokenStore(impl: DataStoreTokenStore): TokenStore
 
     @Binds
+    abstract fun bindSessionStore(impl: DataStoreSessionStore): SessionStore
+
+    @Binds
     abstract fun bindTokenCipher(impl: KeystoreTokenCipher): TokenCipher
 
     companion object {

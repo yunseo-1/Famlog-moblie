@@ -61,13 +61,14 @@ Famlog/
 │  └ src/
 │     ├ main/java/com/famlog/
 │     │  ├ FamlogApp.kt, MainActivity.kt   Hilt 진입점
-│     │  ├ navigation/    하단 탭 5개, 라우트, 세션 만료 시 로그인 이동
-│     │  ├ core/model/    순수 Kotlin 모델 (AuthTokens, ApiError, ErrorCodes)
-│     │  ├ core/common/   디스패처 qualifier
-│     │  ├ core/datastore/  TokenStore(Keystore AES-GCM 암호화), DeviceIdProvider
+│     │  ├ navigation/    시작 분기(StartRoute), 하단 탭 5개, 그룹 전환 시트, 세션 만료 시 로그인 이동
+│     │  ├ core/model/    순수 Kotlin 모델 (AuthTokens, ApiError, ErrorCodes, ApiResult, Group·Member)
+│     │  ├ core/common/   디스패처·Clock(서울)·기기 이름
+│     │  ├ core/datastore/  TokenStore(Keystore AES-GCM 암호화), SessionStore(사용자 ID·현재 그룹), DeviceIdProvider
+│     │  ├ core/data/     Repository(Auth, Group), StartResolver(시작 분기), AgePolicy — Android 의존성 없음
 │     │  ├ core/network/  Retrofit·OkHttp, AuthInterceptor, TokenAuthenticator(재발급 1회 동기화), SessionEvents
 │     │  ├ core/designsystem/  theme/FamTheme.kt(토큰), component/(FamAppBar, FamBottomNav, …)
-│     │  └ feature/{auth,chat,calendar,place,album,story}/  화면 (group, settings는 S7·S20에서 추가)
+│     │  └ feature/{auth,group,chat,calendar,place,album,story}/  화면 (settings는 S20에서 추가)
 │     ├ debug/          로컬 서버 평문 허용, 요청 로그(BASIC), EXIF 검증 화면 — 릴리스에 포함 안 됨
 │     └ release/        빌드 타입별 네트워크 모듈 (로그 없음)
 ├ gradle/, build.gradle.kts, settings.gradle.kts   (버전은 gradle/libs.versions.toml)
@@ -81,6 +82,7 @@ Famlog/
 - `core/model`과 도메인·데이터 계층에는 Android 의존성(`Context`, `android.*`)을 넣지 않는다 (iOS 확장 대비, 사양서 13 §13.3).
 - 토큰은 Android Keystore로 암호화한 DataStore에 저장한다. 사진은 Photo Picker만, 위치는 포그라운드·대략적 위치 우선 (사양서 08 §8.6, 09 §9.5).
 - targetSdk는 Google Play 요구(API 36 이상)를 만족해야 한다. 현재 설정은 37.
+- 소셜 로그인 키는 `local.properties`의 `FAMLOG_KAKAO_NATIVE_APP_KEY`, `FAMLOG_GOOGLE_WEB_CLIENT_ID`(백엔드 `GOOGLE_CLIENT_ID`와 같은 웹 클라이언트) → BuildConfig. git에 올리지 않고, 비어 있으면 버튼이 "설정 필요"를 띄운다(CI).
 - 서버 주소는 `BuildConfig.API_BASE_URL`. 디버그는 에뮬레이터에서 로컬 서버(`http://10.0.2.2:8080/api/v1/`)로 간다.
 - 401 처리: `AUTH_TOKEN_EXPIRED`면 `TokenAuthenticator`가 재발급 후 1회 재시도, `AUTH_INVALID`·재발급 실패면 토큰 삭제 후 로그인 화면.
   재발급을 겹쳐 보내면 서버가 재사용으로 보고 모든 기기를 로그아웃시키므로, 재발급 경로를 따로 만들지 않는다.

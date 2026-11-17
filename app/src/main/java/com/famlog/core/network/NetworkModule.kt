@@ -76,6 +76,14 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(client: OkHttpClient, json: Json): Retrofit = retrofit(client, json)
 
+    @Provides
+    @Singleton
+    fun provideAccountApi(retrofit: Retrofit): AccountApi = retrofit.create(AccountApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideGroupApi(retrofit: Retrofit): GroupApi = retrofit.create(GroupApi::class.java)
+
     private fun baseClientBuilder() = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)

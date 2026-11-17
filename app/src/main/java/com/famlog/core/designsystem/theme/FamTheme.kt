@@ -10,6 +10,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -45,7 +46,25 @@ data class FamColors(
     val categoryTodo: Color = Color(0xFF7A4FE0),
     val categoryTodoBg: Color = Color(0xFFF1ECFF),
     val statusDanger: Color = Color(0xFFD93A3A),
+    /**
+     * 구성원 캘린더 색 팔레트 12색 (GRP-04). 서버 famlog.group.calendar-palette와 순서·값이 같아야 한다.
+     * 앞 4색은 design-tokens.json memberColorSamples, 나머지는 서버 설정의 임시값 (Figma 확정 전).
+     */
+    val memberPalette: List<Color> = listOf(
+        Color(0xFF14A3B8), Color(0xFFE5568D), Color(0xFFE8A33C), Color(0xFF7BB33A),
+        Color(0xFF4C8DF0), Color(0xFFA66BD3), Color(0xFFD9534F), Color(0xFF8D6E63),
+        Color(0xFF607D8B), Color(0xFFF2C94C), Color(0xFF5C6BC0), Color(0xFFFF8A65),
+    ),
+    // 소셜 로그인 버튼: 각 사의 브랜드 가이드 색 (카카오 로그인 디자인 가이드, Google Sign-In 브랜딩 가이드)
+    val kakaoContainer: Color = Color(0xFFFEE500),
+    val kakaoLabel: Color = Color(0xD9000000),
+    val googleContainer: Color = Color(0xFFFFFFFF),
+    val googleBorder: Color = Color(0xFF747775),
+    val googleLabel: Color = Color(0xFF1F1F1F),
 )
+
+/** 팔레트 색을 서버 형식 "#RRGGBB"로 바꾼다 */
+fun Color.toHexRgb(): String = "#%06X".format(toArgb() and 0xFFFFFF)
 
 /** 후보 카드·칩·캘린더·지도 핀에 공통으로 쓰는 유형 색 (패턴 B) */
 enum class CandidateType { SCHEDULE, ANNIVERSARY, TODO, PLACE }
