@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 앱 아이콘 전용. Compose 화면은 FamColors를 쓴다 (값은 brand/primary, brand/subtle 토큰과 같음) -->
+    <color name="ic_launcher_mark">#FFC94A26</color>
+    <color name="ic_launcher_background">#FFFFF1EB</color>
+</resources>
