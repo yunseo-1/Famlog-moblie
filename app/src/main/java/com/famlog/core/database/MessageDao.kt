@@ -20,6 +20,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE `key` = :key")
     suspend fun get(key: String): MessageEntity?
 
+    @Query("SELECT * FROM messages WHERE `key` IN (:keys)")
+    suspend fun getAll(keys: List<String>): List<MessageEntity>
+
     @Query("SELECT * FROM messages WHERE serverId = :id")
     suspend fun getByServerId(id: Long): MessageEntity?
 

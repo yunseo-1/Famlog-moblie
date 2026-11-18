@@ -22,6 +22,7 @@ class FakeMessageDao : MessageDao {
     override suspend fun maxSeq(groupId: Long): Long? = inGroup(groupId).mapNotNull { it.seq }.maxOrNull()
     override suspend fun minSeq(groupId: Long): Long? = inGroup(groupId).mapNotNull { it.seq }.minOrNull()
     override suspend fun get(key: String): MessageEntity? = rows.value[key]
+    override suspend fun getAll(keys: List<String>): List<MessageEntity> = keys.mapNotNull { rows.value[it] }
     override suspend fun getByServerId(id: Long): MessageEntity? = rows.value.values.firstOrNull { it.serverId == id }
 
     override suspend fun updateMedia(id: Long, mediaJson: String) =

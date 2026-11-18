@@ -1,6 +1,7 @@
 package com.famlog.feature.chat
 
 import androidx.lifecycle.SavedStateHandle
+import com.famlog.core.data.ChatPresence
 import com.famlog.core.data.ChatRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.model.ApiResult
@@ -55,10 +56,11 @@ class ChatRoomViewModelTest {
     private val clock = Clock.fixed(Instant.parse("2026-11-17T05:00:00Z"), ZoneId.of("Asia/Seoul"))
 
     private val inspector = mockk<MediaInspector>()
+    private val presence = mockk<ChatPresence>(relaxed = true)
 
     private fun viewModel() = ChatRoomViewModel(
         SavedStateHandle(mapOf("groupId" to GROUP)), chat, groups, FakeSessionStore(userId = ME), clock,
-        inspector, "http://server/api/v1/",
+        inspector, "http://server/api/v1/", presence,
     )
 
     private fun message(seq: Long?, sender: Long, state: SendState = SendState.SENT) = ChatMessage(

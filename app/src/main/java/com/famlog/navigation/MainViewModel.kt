@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.StartDestination
 import com.famlog.core.data.StartResolver
+import com.famlog.core.datastore.AppPrefs
 import com.famlog.core.designsystem.UiText
 import com.famlog.core.designsystem.toUiText
 import com.famlog.core.model.ApiResult
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -40,8 +42,17 @@ class MainViewModel @Inject constructor(
     sessionEvents: SessionEvents,
     private val groupRepository: GroupRepository,
     private val startResolver: StartResolver,
+    private val pendingChatOpen: PendingChatOpen,
+    private val appPrefs: AppPrefs,
 ) : ViewModel() {
     val sessionEvents: Flow<SessionEvent> = sessionEvents.events
+
+    /** 알림을 눌러 열 채팅방 (NOTI-01) */
+    val pendingChatGroupId: StateFlow<Long?> = pendingChatOpen.groupId
+
+    /** 알림 권한 안내 시트를 보일지. 저장값을 읽기 전에는 false */
+    private val _showNotificationPrompt = MutableStateFlow(false)
+    val showNotificationPrompt: StateFlow<Boolean> = _showNotificationPrompt.asStateFlow()
 
     private val busy = MutableStateFlow(GroupSwitcherState())
 
@@ -55,6 +66,18 @@ class MainViewModel @Inject constructor(
 
     private val _events = Channel<MainEvent>(Channel.BUFFERED)
     val events: Flow<MainEvent> = _events.receiveAsFlow()
+
+    init {
+        viewModelScope.launch { _showNotificationPrompt.value = !appPrefs.notificationPromptShown() }
+    }
+
+    fun consumePendingChat() = pendingChatOpen.clear()
+
+    /** 허용·나중에·닫기 어느 쪽이든 한 번 보였으면 다시 묻지 않는다 */
+    fun onNotificationPromptDone() {
+        _showNotificationPrompt.value = false
+        viewModelScope.launch { appPrefs.setNotificationPromptShown() }
+    }
 
     /** 시트를 열 때와 프로세스 재시작으로 탭 화면부터 복원됐을 때 목록을 새로 받는다 */
     fun refreshGroups() {

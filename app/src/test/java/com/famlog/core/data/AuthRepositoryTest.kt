@@ -33,13 +33,15 @@ class AuthRepositoryTest {
     private val session = FakeSessionStore()
     private val deviceId = mockk<DeviceIdProvider> { coEvery { get() } returns "device-1" }
     private val messageDao = FakeMessageDao()
+    private val pushTokens = mockk<PushTokenRepository>(relaxed = true)
     private lateinit var repository: AuthRepository
 
     @Before
     fun setUp() {
         server.start()
         repository = AuthRepository(
-            server.api<AccountApi>(), testApiCaller(), tokenStore, session, deviceId, messageDao, "Google Pixel 9",
+            server.api<AccountApi>(), testApiCaller(), tokenStore, session, deviceId, messageDao, pushTokens,
+            "Google Pixel 9",
         )
     }
 

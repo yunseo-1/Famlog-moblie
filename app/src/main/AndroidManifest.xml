@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 네트워크가 돌아오면 채팅을 바로 다시 연결한다 (일반 권한, 사용자 동의 없음) -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- 푸시 알림 (Android 13+ 실행 중 권한, SCR-04 안내 후 요청) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- allowBackup=false: 토큰·캐시가 기기 백업에 들어가지 않게 한다 (사양서 9.5) -->
     <application
@@ -44,6 +46,15 @@
                     android:scheme="${kakaoScheme}" />
             </intent-filter>
         </activity>
+
+        <!-- FCM data 메시지 수신 (S11) -->
+        <service
+            android:name=".core.push.FamlogMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
         <!-- WorkManager는 Hilt 작업 팩토리로 시작한다 (FamlogApp.workManagerConfiguration) -->
         <provider

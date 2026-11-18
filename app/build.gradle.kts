@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    // app/google-services.json → Firebase 설정 리소스 (FCM, S11)
+    alias(libs.plugins.google.services)
 }
 
 /** 소셜 로그인 키: local.properties → 환경 변수 → 빈 값 순서. 비어 있으면 해당 로그인 버튼이 "설정 필요"를 띄운다 */
@@ -91,6 +93,8 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.kakao.sdk.user)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)

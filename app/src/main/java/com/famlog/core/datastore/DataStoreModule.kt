@@ -17,7 +17,12 @@ import javax.inject.Singleton
 @Retention(AnnotationRetention.BINARY)
 annotation class AuthDataStore
 
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AppDataStore
+
 private val Context.authDataStore: DataStore<Preferences> by preferencesDataStore(name = "auth")
+private val Context.appDataStore: DataStore<Preferences> by preferencesDataStore(name = "app")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -30,6 +35,9 @@ abstract class DataStoreModule {
     abstract fun bindSessionStore(impl: DataStoreSessionStore): SessionStore
 
     @Binds
+    abstract fun bindAppPrefs(impl: DataStoreAppPrefs): AppPrefs
+
+    @Binds
     abstract fun bindTokenCipher(impl: KeystoreTokenCipher): TokenCipher
 
     companion object {
@@ -38,5 +46,11 @@ abstract class DataStoreModule {
         @AuthDataStore
         fun provideAuthDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
             context.authDataStore
+
+        @Provides
+        @Singleton
+        @AppDataStore
+        fun provideAppDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+            context.appDataStore
     }
 }

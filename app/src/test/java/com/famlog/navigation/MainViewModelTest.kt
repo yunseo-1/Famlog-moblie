@@ -1,5 +1,6 @@
 package com.famlog.navigation
 
+import com.famlog.core.datastore.AppPrefs
 import app.cash.turbine.test
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.StartDestination
@@ -37,7 +38,8 @@ class MainViewModelTest {
         every { currentGroupId } returns currentId
     }
     private val resolver = mockk<StartResolver>()
-    private val viewModel = MainViewModel(SessionEvents(), groups, resolver)
+    private val appPrefs = mockk<AppPrefs>(relaxed = true)
+    private val viewModel = MainViewModel(SessionEvents(), groups, resolver, PendingChatOpen(), appPrefs)
 
     @Test
     fun 현재_그룹을_다시_고르면_서버에_보내지_않고_시트만_닫는다() = runTest {
