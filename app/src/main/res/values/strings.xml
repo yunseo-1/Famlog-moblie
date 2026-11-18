@@ -165,7 +165,6 @@
     <!-- 캘린더·일정 (S13, SCH-01~05) -->
     <string name="calendar_tab_schedule">일정</string>
     <string name="calendar_tab_todo">할 일</string>
-    <string name="calendar_todo_coming">할 일은 곧 여기에 보여요.</string>
     <string name="calendar_filter_all">전체</string>
     <string name="calendar_month_title">%1$d년 %2$d월</string>
     <string name="calendar_previous_month">이전 달</string>
@@ -229,4 +228,27 @@
     <string name="push_schedule_text">%1$s · %2$s</string>
     <string name="push_schedule_today">오늘</string>
     <string name="push_schedule_tomorrow">내일</string>
+    <!-- 할 일 (S13-2, TODO-01) -->
+    <string name="todo_section_open">할 일 %1$d</string>
+    <string name="todo_section_done">완료한 일</string>
+    <string name="todo_empty">할 일이 없어요. + 를 눌러 추가해 보세요.</string>
+    <string name="todo_load_failed">할 일을 불러오지 못했어요.</string>
+    <string name="todo_add">할 일 추가</string>
+    <string name="todo_edit_title">할 일 수정</string>
+    <string name="todo_field_title">할 일</string>
+    <string name="todo_field_title_hint">예: 우유 사 오기</string>
+    <string name="todo_field_assignee">담당자</string>
+    <string name="todo_field_due">기한</string>
+    <string name="todo_due_none">없음</string>
+    <string name="todo_due_pick">날짜 고르기</string>
+    <string name="todo_due">%1$s까지</string>
+    <string name="todo_overdue">%1$s까지 · 지남</string>
+    <string name="todo_unassigned">담당자 없음</string>
+    <string name="todo_save">저장</string>
+    <string name="todo_delete">삭제</string>
+    <string name="todo_announce_hint">완료하면 채팅방에 한 줄로 알려요.</string>
+    <string name="todo_mark_done">%1$s 완료</string>
+    <string name="todo_mark_open">%1$s 완료 취소</string>
+    <string name="todo_version_conflict">다른 가족이 먼저 고쳤어요. 최신 목록을 불러왔으니 다시 해 주세요.</string>
+    <string name="todo_view_only">등록한 사람이나 관리자만 고칠 수 있어요.</string>
 </resources>

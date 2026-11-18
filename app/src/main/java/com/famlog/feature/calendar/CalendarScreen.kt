@@ -45,7 +45,6 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.famlog.R
 import com.famlog.core.designsystem.component.FamChip
-import com.famlog.core.designsystem.component.PlaceholderScreen
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
 import com.famlog.core.model.Holiday
@@ -83,6 +82,7 @@ fun CalendarScreen(
         onOpenSchedule = onOpenSchedule,
         onAddSchedule = { onAddSchedule(state.selectedDate) },
         modifier = modifier,
+        todoContent = { TodoTab() },
     )
 }
 
@@ -100,6 +100,8 @@ fun CalendarContent(
     onOpenSchedule: (Long) -> Unit,
     onAddSchedule: () -> Unit,
     modifier: Modifier = Modifier,
+    /** [할 일] 탭 내용 (자기 ViewModel을 가진다) */
+    todoContent: @Composable () -> Unit = {},
 ) {
     Box(modifier = modifier.fillMaxSize().background(FamTheme.colors.bgDefault)) {
         Column(Modifier.fillMaxSize()) {
@@ -109,7 +111,7 @@ fun CalendarContent(
                 modifier = Modifier.padding(horizontal = FamDimens.screenPadding, vertical = FamDimens.sm),
             )
             when (state.tab) {
-                CalendarTab.TODO -> PlaceholderScreen(body = stringResource(R.string.calendar_todo_coming))
+                CalendarTab.TODO -> todoContent()
                 CalendarTab.SCHEDULE -> ScheduleTab(
                     state = state,
                     onSelectAll = onSelectAll,

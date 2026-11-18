@@ -126,6 +126,10 @@ object NetworkModule {
     fun provideScheduleApi(retrofit: Retrofit): ScheduleApi = retrofit.create(ScheduleApi::class.java)
 
     @Provides
+    @Singleton
+    fun provideTodoApi(retrofit: Retrofit): TodoApi = retrofit.create(TodoApi::class.java)
+
+    @Provides
     @ApiBaseUrl
     fun provideApiBaseUrl(): String = BuildConfig.API_BASE_URL
 

@@ -377,7 +377,7 @@ private fun ConflictNotice(state: ScheduleEditUiState) {
 /** Material 3 DatePicker는 UTC 자정 millis로 주고받는다 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DatePickerDialogFor(initial: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate) -> Unit) {
+internal fun DatePickerDialogFor(initial: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate) -> Unit) {
     val pickerState = rememberDatePickerState(initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
     DatePickerDialog(
         onDismissRequest = onDismiss,
