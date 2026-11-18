@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.famlog.R
+import com.famlog.core.data.ChatPresence
 import com.famlog.core.data.ChatRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.datastore.SessionStore
@@ -82,6 +83,7 @@ class ChatRoomViewModel @Inject constructor(
     private val clock: Clock,
     private val mediaInspector: MediaInspector,
     @ApiBaseUrl private val apiBaseUrl: String,
+    private val presence: ChatPresence,
 ) : ViewModel() {
 
     val groupId: Long = checkNotNull(savedStateHandle["groupId"])
@@ -148,8 +150,10 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    /** 보이는 동안은 이 방의 푸시 알림을 띄우지 않고, 들어오면 쌓인 알림을 지운다 (NOTI-01) */
     fun setVisible(value: Boolean) {
         visible.value = value
+        if (value) presence.enter(groupId) else presence.leave(groupId)
     }
 
     fun onInputChange(value: String) {

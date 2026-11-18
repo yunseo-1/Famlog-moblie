@@ -64,6 +64,7 @@ fun FamlogNavHost(
             when (event) {
                 SessionEvent.LoggedOut -> {
                     showSwitcher = false
+                    viewModel.consumePendingChat()
                     navController.navigateTo(StartDestination.Login)
                 }
             }
@@ -82,6 +83,16 @@ fun FamlogNavHost(
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentTab = backStackEntry?.destination?.topLevelDestination()
+
+    // 알림을 눌렀으면 시작 분기(로그인·그룹 확인)를 마친 뒤 그 채팅방을 연다. 바닥은 채팅 탭
+    val pendingChatGroupId by viewModel.pendingChatGroupId.collectAsStateWithLifecycle()
+    val inMain = backStackEntry?.destination?.isMainArea() == true
+    LaunchedEffect(pendingChatGroupId, inMain) {
+        val groupId = pendingChatGroupId ?: return@LaunchedEffect
+        if (!inMain) return@LaunchedEffect
+        viewModel.consumePendingChat()
+        navController.navigate(ChatRoomRoute(groupId)) { popUpTo(ChatRoute) }
+    }
 
     // 프로세스가 다시 만들어져 탭 화면부터 복원되면 시작 분기를 거치지 않으므로 그룹 목록을 다시 받는다
     LaunchedEffect(currentTab != null) {
@@ -137,6 +148,12 @@ fun FamlogNavHost(
             composable<StoryRoute> { StoryScreen() }
         }
     }
+
+    val showNotificationPrompt by viewModel.showNotificationPrompt.collectAsStateWithLifecycle()
+    NotificationPermissionPrompt(
+        visible = showNotificationPrompt && currentTab != null,
+        onDone = viewModel::onNotificationPromptDone,
+    )
 
     if (showSwitcher) {
         GroupSwitcherSheet(
@@ -202,6 +219,11 @@ private fun NavDestination.topLevelDestination(): TopLevelDestination? =
     TopLevelDestination.entries.firstOrNull { tab ->
         hierarchy.any { it.hasRoute(tab.route::class) }
     }
+
+/** 시작 분기(시작·로그인·그룹 시작·역할 정하기)를 마친 화면 */
+private fun NavDestination.isMainArea(): Boolean =
+    listOf(StartRoute::class, LoginRoute::class, GroupStartRoute::class, RoleSetupRoute::class)
+        .none { route -> hierarchy.any { it.hasRoute(route) } }
 
 private fun NavHostController.navigateToTab(tab: TopLevelDestination) {
     navigate(tab.route) {

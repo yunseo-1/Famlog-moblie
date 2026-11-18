@@ -177,6 +177,41 @@ class ChatRepositoryTest {
     }
 
     @Test
+    fun 읽음_반영_뒤에_늦게_받은_같은_페이지가_안_읽은_수를_되돌리지_않는다() = runTest {
+        server.enqueue(jsonResponse(page(1)))
+        repository.refresh(GROUP)
+        // 채팅방 refresh와 재연결 syncCached가 같은 페이지(2~3, 내가 아직 안 읽음)를 받는다
+        val stalePage = """{"items":[${message(2, sender = OTHER, unread = 1)},${message(3, sender = OTHER, unread = 1)}],"hasMore":false}"""
+        server.enqueue(jsonResponse(stalePage))
+        repository.refresh(GROUP)
+
+        repository.onGroupEvent(
+            GROUP,
+            event(ChatEventTypes.READ_UPDATED, """{"groupId":$GROUP,"userId":$ME,"fromSeq":1,"lastReadSeq":3}"""),
+        )
+        // 늦게 끝난 쪽: 읽기 전에 만든 응답(unreadCount 1)을 지금 저장한다
+        server.enqueue(jsonResponse(stalePage))
+        repository.syncCached(listOf(GROUP))
+
+        assertEquals(listOf(0, 0, 0), messages().map { it.unreadCount })
+    }
+
+    @Test
+    fun 내가_보낸_메시지의_서버_응답은_안_읽은_수를_그대로_쓴다() = runTest {
+        repository.send(GROUP, "안녕", replyTo = null)
+        val clientId = messages().single().clientMessageId
+
+        repository.onUserEvent(
+            ChatEventEnvelope(
+                ChatEventTypes.MESSAGE_CREATED,
+                testJson.parseToJsonElement(message(1, sender = ME, clientId = clientId, unread = 1)),
+            ),
+        )
+
+        assertEquals(listOf(1), messages().map { it.unreadCount })
+    }
+
+    @Test
     fun 전송_제한은_SENDING으로_두고_다시_보내라고_알리고_다른_실패는_FAILED() = runTest {
         repository.send(GROUP, "하나", replyTo = null)
         repository.send(GROUP, "둘", replyTo = null)

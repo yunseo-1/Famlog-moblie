@@ -36,6 +36,11 @@ annotation class UploadClient
 @Retention(AnnotationRetention.BINARY)
 annotation class ApiBaseUrl
 
+/** 앱 버전 이름 (X-App-Version, 푸시 토큰 등록) */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AppVersion
+
 /** 빌드 타입별로 추가하는 인터셉터 (디버그: 로그). src/debug, src/release 의 모듈이 제공한다 */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -54,8 +59,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideAppHeadersInterceptor(): AppHeadersInterceptor =
-        AppHeadersInterceptor(appVersion = BuildConfig.VERSION_NAME)
+    fun provideAppHeadersInterceptor(@AppVersion appVersion: String): AppHeadersInterceptor =
+        AppHeadersInterceptor(appVersion = appVersion)
+
+    @Provides
+    @AppVersion
+    fun provideAppVersion(): String = BuildConfig.VERSION_NAME
 
     @Provides
     @Singleton
@@ -107,6 +116,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideMediaApi(retrofit: Retrofit): MediaApi = retrofit.create(MediaApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideDeviceApi(retrofit: Retrofit): DeviceApi = retrofit.create(DeviceApi::class.java)
 
     @Provides
     @ApiBaseUrl

@@ -255,11 +255,16 @@ private fun MessageList(
         snapshotFlow { nearTop }.distinctUntilChanged().filter { it }.collect { onLoadOlder() }
     }
 
-    // 새 메시지: 맨 아래를 보고 있었거나 내가 보냈으면 맨 아래로
+    // 새 메시지: 직전 최신 메시지가 보이고 있었거나 내가 보냈으면 맨 아래로.
+    // 여러 개가 한꺼번에 붙으면(알림을 눌러 들어온 직후 등) 목록이 이전 줄을 붙잡아 위치 번호로는 판단할 수 없다
     val newest = rows.firstOrNull() as? ChatRow.Message
+    var shownNewestKey by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(newest?.key) {
         val message = newest?.message ?: return@LaunchedEffect
-        if (listState.firstVisibleItemIndex <= 1 || message.senderId == state.myUserId) {
+        val previous = shownNewestKey
+        shownNewestKey = newest.key
+        val sawPrevious = previous == null || listState.layoutInfo.visibleItemsInfo.any { it.key == previous }
+        if (sawPrevious || message.senderId == state.myUserId) {
             listState.animateScrollToItem(0)
         }
     }

@@ -73,6 +73,9 @@ class ChatRepository @Inject constructor(
     private val sentReadSeq = mutableMapOf<Long, Long>()
     private val readLock = Mutex()
 
+    /** 서버 메시지 저장과 읽음 반영이 겹치지 않게 한다 ([store]) */
+    private val unreadLock = Mutex()
+
     fun messages(groupId: Long): Flow<List<ChatMessage>> =
         dao.observe(groupId).map { list -> list.map { it.toModel() } }
 
@@ -199,7 +202,7 @@ class ChatRepository @Inject constructor(
                 groupRepository.applyDeleted(it.groupId, it.seq)
             }
             ChatEventTypes.READ_UPDATED -> event.decode(ReadUpdated.serializer())?.let { read ->
-                dao.decrementUnread(read.groupId, read.fromSeq, read.lastReadSeq, read.userId)
+                unreadLock.withLock { dao.decrementUnread(read.groupId, read.fromSeq, read.lastReadSeq, read.userId) }
                 // 내 다른 기기에서 읽었다
                 if (read.userId == sessionStore.userId()) groupRepository.clearUnread(groupId)
             }
@@ -272,9 +275,25 @@ class ChatRepository @Inject constructor(
         return loadLatest(groupId)
     }
 
+    /**
+     * 서버 메시지를 캐시에 넣는다. 안 읽은 수는 줄기만 하므로, 이미 받은 메시지는 더 작은 값을 지킨다.
+     * 같은 페이지를 두 곳(채팅방 refresh·재연결 syncCached)에서 받는 동안 read.updated가 먼저 반영되면
+     * 늦게 끝난 쪽의 예전 값이 덮어써 읽은 메시지에 "1"이 남았다.
+     */
     private suspend fun store(messages: List<MessageResponse>) {
         if (messages.isEmpty()) return
-        dao.upsert(messages.map { it.toEntity() })
+        val entities = messages.map { it.toEntity() }
+        unreadLock.withLock {
+            val cached = dao.getAll(entities.map { it.key })
+                .filter { it.seq != null }
+                .associate { it.key to it.unreadCount }
+            dao.upsert(
+                entities.map { entity ->
+                    val known = cached[entity.key] ?: return@map entity
+                    if (known < entity.unreadCount) entity.copy(unreadCount = known) else entity
+                },
+            )
+        }
     }
 
     private fun trySend(entity: MessageEntity): Boolean {

@@ -32,6 +32,7 @@ class AuthRepository @Inject constructor(
     private val sessionStore: SessionStore,
     private val deviceIdProvider: DeviceIdProvider,
     private val messageDao: MessageDao,
+    private val pushTokens: PushTokenRepository,
     @DeviceName private val deviceName: String,
 ) {
 
@@ -64,6 +65,8 @@ class AuthRepository @Inject constructor(
         if (sessionStore.userId() != response.user.id) messageDao.clear()
         tokenStore.save(AuthTokens(response.tokens.accessToken, response.tokens.refreshToken))
         sessionStore.saveUser(response.user.id, response.user.lastGroupId)
+        // 이 기기(세션)로 푸시를 받게 토큰을 올린다. 실패해도 로그인은 그대로 (다음 시작 때 다시)
+        pushTokens.registerInBackground()
     }
 
     companion object {
