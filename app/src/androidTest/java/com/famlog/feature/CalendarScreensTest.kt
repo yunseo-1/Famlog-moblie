@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -14,9 +15,12 @@ import com.famlog.core.model.GroupRole
 import com.famlog.core.model.Holiday
 import com.famlog.core.model.Member
 import com.famlog.core.model.Occurrence
+import com.famlog.core.model.Todo
 import com.famlog.feature.calendar.CalendarContent
 import com.famlog.feature.calendar.CalendarMode
 import com.famlog.feature.calendar.CalendarUiState
+import com.famlog.feature.calendar.TodoContent
+import com.famlog.feature.calendar.TodoUiState
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -112,5 +116,40 @@ class CalendarScreensTest {
 
         compose.onNodeWithText("성탄절").assertExists()
         compose.onNodeWithText("일정이 없어요.").assertExists()
+    }
+
+    @Test
+    fun 할_일은_안_한_일과_완료한_일로_나뉘고_체크를_누르면_완료로_바뀐다() {
+        val milk = Todo(1, 1, "우유 사 오기", mom.userId, LocalDate.of(2026, 11, 17), false, null, null, mom.userId, 1)
+        val parcel = Todo(2, 1, "택배 받기", dad.userId, null, true, null, null, dad.userId, 1)
+        compose.setContent {
+            var state by remember {
+                mutableStateOf(TodoUiState(groupId = 1, members = listOf(dad, mom), todos = listOf(milk, parcel), today = LocalDate.of(2026, 11, 18)))
+            }
+            FamLogTheme {
+                TodoContent(
+                    state = state,
+                    onSelectAll = {},
+                    onToggleMember = {},
+                    onToggleDone = { todo ->
+                        state = state.copy(todos = state.todos.map { if (it.id == todo.id) it.copy(done = !it.done) else it })
+                    },
+                    onOpen = {},
+                    onAdd = {},
+                    onLoadMore = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("할 일 1").assertExists()
+        compose.onNodeWithText("완료한 일").assertExists()
+        // 기한이 지난 할 일은 "지남"
+        compose.onNodeWithText("· 11월 17일 (화)까지 · 지남").assertExists()
+
+        compose.onNodeWithContentDescription("우유 사 오기 완료").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("할 일 0").assertExists()
+        compose.onNodeWithContentDescription("우유 사 오기 완료 취소").assertExists()
     }
 }
