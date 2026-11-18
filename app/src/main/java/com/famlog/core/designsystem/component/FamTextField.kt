@@ -30,6 +30,9 @@ fun FamTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    /** 메모처럼 여러 줄이면 [minLines] 이상으로 늘어난다 */
+    singleLine: Boolean = true,
+    minLines: Int = 1,
 ) {
     val colors = FamTheme.colors
     OutlinedTextField(
@@ -37,7 +40,8 @@ fun FamTextField(
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        singleLine = true,
+        singleLine = singleLine,
+        minLines = minLines,
         textStyle = FamTheme.type.bodyLarge,
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it, color = colors.textTertiary) } },

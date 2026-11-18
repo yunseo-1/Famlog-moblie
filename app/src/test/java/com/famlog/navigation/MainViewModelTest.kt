@@ -39,7 +39,7 @@ class MainViewModelTest {
     }
     private val resolver = mockk<StartResolver>()
     private val appPrefs = mockk<AppPrefs>(relaxed = true)
-    private val viewModel = MainViewModel(SessionEvents(), groups, resolver, PendingChatOpen(), appPrefs)
+    private val viewModel = MainViewModel(SessionEvents(), groups, resolver, PendingOpen(), appPrefs)
 
     @Test
     fun 현재_그룹을_다시_고르면_서버에_보내지_않고_시트만_닫는다() = runTest {

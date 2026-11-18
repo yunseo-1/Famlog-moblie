@@ -9,14 +9,15 @@ import com.famlog.core.designsystem.theme.FamLogTheme
 import com.famlog.core.push.PushNotifier
 import com.famlog.debug.BuildTypeSetup
 import com.famlog.navigation.FamlogNavHost
-import com.famlog.navigation.PendingChatOpen
+import com.famlog.navigation.OpenTarget
+import com.famlog.navigation.PendingOpen
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    @Inject lateinit var pendingChatOpen: PendingChatOpen
+    @Inject lateinit var pendingOpen: PendingOpen
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,9 +42,12 @@ class MainActivity : ComponentActivity() {
         // 최근 앱 목록에서 다시 열면 예전 알림의 intent가 그대로 오므로 무시한다
         if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         val groupId = intent.getLongExtra(PushNotifier.EXTRA_GROUP_ID, -1L)
-        if (groupId > 0) {
-            pendingChatOpen.open(groupId)
-            intent.removeExtra(PushNotifier.EXTRA_GROUP_ID)
+        val scheduleId = intent.getLongExtra(PushNotifier.EXTRA_SCHEDULE_ID, -1L)
+        when {
+            groupId > 0 -> pendingOpen.open(OpenTarget.Chat(groupId))
+            scheduleId > 0 -> pendingOpen.open(OpenTarget.Schedule(scheduleId))
         }
+        intent.removeExtra(PushNotifier.EXTRA_GROUP_ID)
+        intent.removeExtra(PushNotifier.EXTRA_SCHEDULE_ID)
     }
 }

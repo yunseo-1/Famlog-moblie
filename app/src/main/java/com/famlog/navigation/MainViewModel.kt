@@ -42,13 +42,13 @@ class MainViewModel @Inject constructor(
     sessionEvents: SessionEvents,
     private val groupRepository: GroupRepository,
     private val startResolver: StartResolver,
-    private val pendingChatOpen: PendingChatOpen,
+    private val pendingOpen: PendingOpen,
     private val appPrefs: AppPrefs,
 ) : ViewModel() {
     val sessionEvents: Flow<SessionEvent> = sessionEvents.events
 
-    /** 알림을 눌러 열 채팅방 (NOTI-01) */
-    val pendingChatGroupId: StateFlow<Long?> = pendingChatOpen.groupId
+    /** 알림을 눌러 열 화면 (NOTI-01, SCH-03) */
+    val openTarget: StateFlow<OpenTarget?> = pendingOpen.target
 
     /** 알림 권한 안내 시트를 보일지. 저장값을 읽기 전에는 false */
     private val _showNotificationPrompt = MutableStateFlow(false)
@@ -71,7 +71,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { _showNotificationPrompt.value = !appPrefs.notificationPromptShown() }
     }
 
-    fun consumePendingChat() = pendingChatOpen.clear()
+    fun consumePendingOpen() = pendingOpen.clear()
 
     /** 허용·나중에·닫기 어느 쪽이든 한 번 보였으면 다시 묻지 않는다 */
     fun onNotificationPromptDone() {

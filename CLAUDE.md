@@ -65,7 +65,7 @@ Famlog/
 │     │  ├ core/model/    순수 Kotlin 모델 (AuthTokens, ApiError, ErrorCodes, ApiResult, Group·Member)
 │     │  ├ core/common/   디스패처·앱 범위 CoroutineScope·Clock(서울)·기기 이름·네트워크 복구 알림
 │     │  ├ core/datastore/  TokenStore(Keystore AES-GCM 암호화), SessionStore(사용자 ID·현재 그룹), DeviceIdProvider
-│     │  ├ core/data/     Repository(Auth, Group, Chat, PushToken), ChatSync(실시간 연결·재연결), MediaUploader, StartResolver, AgePolicy — Android 의존성 없음
+│     │  ├ core/data/     Repository(Auth, Group, Chat, PushToken, Schedule), ChatSync(실시간 연결·재연결), MediaUploader, StartResolver, AgePolicy — Android 의존성 없음
 │     │  ├ core/database/ Room 로컬 캐시(채팅 메시지). 서버가 원본이라 스키마가 바뀌면 지우고 다시 받는다
 │     │  ├ core/media/    사진·동영상 업로드 작업(WorkManager), Photo Picker 파일 검사·읽기
 │     │  ├ core/push/     FCM 수신 서비스, 알림 채널·표시(PushNotifier)

@@ -21,6 +21,10 @@ import com.famlog.core.model.PushChannel
 import com.famlog.core.model.PushMessage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,6 +52,13 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
     fun show(message: PushMessage) {
         when (message) {
             is PushMessage.Chat -> showChat(message)
+            is PushMessage.ScheduleReminder -> showSystem(
+                message = message,
+                tag = "schedule:${message.scheduleId}",
+                title = message.title ?: context.getString(R.string.push_schedule_title_hidden),
+                text = context.getString(R.string.push_schedule_text, message.groupName, whenText(message)),
+                contentIntent = openSchedule(message.scheduleId),
+            )
             is PushMessage.MemberRemoved -> showSystem(
                 message = message,
                 tag = "removed:${message.groupId}",
@@ -127,7 +138,26 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
         .setContentIntent(openApp(null))
         .build()
 
-    private fun showSystem(message: PushMessage, tag: String, title: String, text: String) {
+    /** "오늘 오후 3:00", "내일 종일", "11월 21일 (토) 오후 3:00" (서울 기준) */
+    private fun whenText(message: PushMessage.ScheduleReminder): String {
+        val start = message.startsAt?.atZone(SeoulZone) ?: return ""
+        val today = LocalDate.now(SeoulZone)
+        val day = when (start.toLocalDate()) {
+            today -> context.getString(R.string.push_schedule_today)
+            today.plusDays(1) -> context.getString(R.string.push_schedule_tomorrow)
+            else -> dayFormatter.format(start)
+        }
+        val time = if (message.allDay) context.getString(R.string.schedule_all_day) else timeFormatter.format(start)
+        return "$day $time"
+    }
+
+    private fun showSystem(
+        message: PushMessage,
+        tag: String,
+        title: String,
+        text: String,
+        contentIntent: PendingIntent = openApp(null),
+    ) {
         val notification = NotificationCompat.Builder(context, message.channel.id)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
@@ -135,9 +165,23 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .setSilent(message.silent)
-            .setContentIntent(openApp(null))
+            .setContentIntent(contentIntent)
             .build()
         notify(tag, notification)
+    }
+
+    /** 일정 리마인드를 누르면 그 일정 상세로 (MainActivity) */
+    private fun openSchedule(scheduleId: Long): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_SCHEDULE_ID, scheduleId)
+        }
+        return PendingIntent.getActivity(
+            context,
+            REQUEST_SCHEDULE_BASE + scheduleId.hashCode(),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
     }
 
     /** 앱을 연다. [groupId]가 있으면 시작 분기를 거친 뒤 그 채팅방으로 간다 (MainActivity) */
@@ -179,6 +223,16 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
     companion object {
         /** MainActivity가 읽는 알림 탭 대상 그룹 */
         const val EXTRA_GROUP_ID = "com.famlog.extra.GROUP_ID"
+
+        /** MainActivity가 읽는 일정 리마인드 탭 대상 */
+        const val EXTRA_SCHEDULE_ID = "com.famlog.extra.SCHEDULE_ID"
+
+        /** 채팅 알림(그룹 ID)과 PendingIntent 요청 코드가 겹치지 않게 */
+        private const val REQUEST_SCHEDULE_BASE = 1 shl 30
+
+        private val SeoulZone: ZoneId = ZoneId.of("Asia/Seoul")
+        private val timeFormatter = DateTimeFormatter.ofPattern("a h:mm", Locale.KOREAN)
+        private val dayFormatter = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN)
 
         /** 알림은 tag로 구분하고 id는 하나만 쓴다 (그룹 ID가 Int 범위를 넘어도 되게) */
         private const val ID_CHAT = 1
