@@ -102,4 +102,24 @@ class PushMessageTest {
 
         assertFalse(message.toString().contains("저녁"))
     }
+
+    @Test
+    fun 일정_리마인드를_읽고_미리보기를_숨기면_제목이_없다() {
+        val data = mapOf(
+            "type" to "SCHEDULE_REMINDER", "channel" to "SCHEDULE", "silent" to "false",
+            "groupId" to "7", "groupName" to "우리 가족", "scheduleId" to "31",
+            "startsAt" to "2026-11-21T18:00:00+09:00", "allDay" to "false", "reminder" to "HOUR_1",
+            "title" to "할머니 생신 저녁",
+        )
+
+        val reminder = PushMessage.parse(data) as PushMessage.ScheduleReminder
+        assertEquals(31L, reminder.scheduleId)
+        assertEquals(Instant.parse("2026-11-21T09:00:00Z"), reminder.startsAt)
+        assertEquals(PushChannel.SCHEDULE, reminder.channel)
+        assertEquals("할머니 생신 저녁", reminder.title)
+        assertFalse(reminder.toString().contains("할머니"))
+
+        assertNull((PushMessage.parse(data - "title") as PushMessage.ScheduleReminder).title)
+        assertNull(PushMessage.parse(data - "scheduleId"))
+    }
 }

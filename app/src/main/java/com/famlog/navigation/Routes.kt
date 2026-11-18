@@ -28,6 +28,12 @@ import kotlinx.serialization.Serializable
 /** 사진·동영상 전체 화면 (CHAT-05) */
 @Serializable data class MediaViewerRoute(val groupId: Long, val messageId: Long, val index: Int)
 
+/** SCR-21 일정 상세 (SCH-01) */
+@Serializable data class ScheduleDetailRoute(val scheduleId: Long)
+
+/** SCR-21 일정 등록([scheduleId] 0) · 수정. [date]는 등록 기본 날짜 "yyyy-MM-dd" */
+@Serializable data class ScheduleEditRoute(val scheduleId: Long = 0, val date: String? = null)
+
 /** SCR-03 */
 @Serializable data class RoleSetupRoute(val groupId: Long)
 

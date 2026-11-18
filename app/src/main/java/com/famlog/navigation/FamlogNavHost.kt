@@ -38,6 +38,8 @@ import com.famlog.core.network.SessionEvent
 import com.famlog.feature.album.AlbumScreen
 import com.famlog.feature.auth.LoginScreen
 import com.famlog.feature.calendar.CalendarScreen
+import com.famlog.feature.calendar.ScheduleDetailScreen
+import com.famlog.feature.calendar.ScheduleEditScreen
 import com.famlog.feature.chat.ChatRoomScreen
 import com.famlog.feature.chat.ChatScreen
 import com.famlog.feature.chat.MediaViewerScreen
@@ -64,7 +66,7 @@ fun FamlogNavHost(
             when (event) {
                 SessionEvent.LoggedOut -> {
                     showSwitcher = false
-                    viewModel.consumePendingChat()
+                    viewModel.consumePendingOpen()
                     navController.navigateTo(StartDestination.Login)
                 }
             }
@@ -84,14 +86,20 @@ fun FamlogNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentTab = backStackEntry?.destination?.topLevelDestination()
 
-    // 알림을 눌렀으면 시작 분기(로그인·그룹 확인)를 마친 뒤 그 채팅방을 연다. 바닥은 채팅 탭
-    val pendingChatGroupId by viewModel.pendingChatGroupId.collectAsStateWithLifecycle()
+    // 알림을 눌렀으면 시작 분기(로그인·그룹 확인)를 마친 뒤 그 화면을 연다. 채팅방 바닥은 채팅 탭, 일정 상세 바닥은 캘린더 탭
+    val openTarget by viewModel.openTarget.collectAsStateWithLifecycle()
     val inMain = backStackEntry?.destination?.isMainArea() == true
-    LaunchedEffect(pendingChatGroupId, inMain) {
-        val groupId = pendingChatGroupId ?: return@LaunchedEffect
+    LaunchedEffect(openTarget, inMain) {
+        val target = openTarget ?: return@LaunchedEffect
         if (!inMain) return@LaunchedEffect
-        viewModel.consumePendingChat()
-        navController.navigate(ChatRoomRoute(groupId)) { popUpTo(ChatRoute) }
+        viewModel.consumePendingOpen()
+        when (target) {
+            is OpenTarget.Chat -> navController.navigate(ChatRoomRoute(target.groupId)) { popUpTo(ChatRoute) }
+            is OpenTarget.Schedule -> {
+                navController.navigateToTab(TopLevelDestination.CALENDAR)
+                navController.navigate(ScheduleDetailRoute(target.scheduleId))
+            }
+        }
     }
 
     // 프로세스가 다시 만들어져 탭 화면부터 복원되면 시작 분기를 거치지 않으므로 그룹 목록을 다시 받는다
@@ -142,7 +150,34 @@ fun FamlogNavHost(
                 )
             }
             composable<MediaViewerRoute> { MediaViewerScreen(onClose = { navController.popBackStack() }) }
-            composable<CalendarRoute> { CalendarScreen() }
+            composable<CalendarRoute> {
+                CalendarScreen(
+                    onOpenSchedule = { navController.navigate(ScheduleDetailRoute(it)) },
+                    onAddSchedule = { date -> navController.navigate(ScheduleEditRoute(date = date.toString())) },
+                )
+            }
+            composable<ScheduleDetailRoute> {
+                ScheduleDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onEdit = { navController.navigate(ScheduleEditRoute(scheduleId = it)) },
+                )
+            }
+            composable<ScheduleEditRoute> { entry ->
+                val route = entry.toRoute<ScheduleEditRoute>()
+                ScheduleEditScreen(
+                    onClose = { navController.popBackStack() },
+                    onSaved = { scheduleId ->
+                        // 등록하면 상세로 넘어가고, 수정이면 원래 상세로 돌아간다
+                        if (route.scheduleId == 0L) {
+                            navController.navigate(ScheduleDetailRoute(scheduleId)) {
+                                popUpTo<ScheduleEditRoute> { inclusive = true }
+                            }
+                        } else {
+                            navController.popBackStack()
+                        }
+                    },
+                )
+            }
             composable<PlaceRoute> { PlaceScreen() }
             composable<AlbumRoute> { AlbumScreen() }
             composable<StoryRoute> { StoryScreen() }

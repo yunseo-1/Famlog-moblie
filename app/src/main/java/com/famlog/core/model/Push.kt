@@ -40,6 +40,21 @@ sealed interface PushMessage {
         override fun toString(): String = "PushMessage.Chat(groupId=$groupId, messageId=$messageId, type=$messageType)"
     }
 
+    /** 일정 리마인드 (SCH-03). [title]은 미리보기를 숨겼으면 null */
+    data class ScheduleReminder(
+        val groupId: Long,
+        val groupName: String,
+        val scheduleId: Long,
+        val startsAt: Instant?,
+        val allDay: Boolean,
+        val title: String?,
+        override val channel: PushChannel,
+        override val silent: Boolean,
+    ) : PushMessage {
+        /** 일정 제목이 들어 있어 값은 보이지 않는다 */
+        override fun toString(): String = "PushMessage.ScheduleReminder(groupId=$groupId, scheduleId=$scheduleId)"
+    }
+
     /** 그룹에서 내보내진 본인에게 */
     data class MemberRemoved(
         val groupId: Long,
@@ -61,6 +76,7 @@ sealed interface PushMessage {
         const val TYPE_CHAT_MESSAGE = "CHAT_MESSAGE"
         const val TYPE_MEMBER_REMOVED = "MEMBER_REMOVED"
         const val TYPE_NEW_DEVICE_LOGIN = "NEW_DEVICE_LOGIN"
+        const val TYPE_SCHEDULE_REMINDER = "SCHEDULE_REMINDER"
 
         fun parse(data: Map<String, String>): PushMessage? {
             val channel = PushChannel.of(data["channel"])
@@ -76,6 +92,16 @@ sealed interface PushMessage {
                     mediaCount = data["mediaCount"]?.toIntOrNull() ?: 0,
                     body = data["body"]?.takeIf { it.isNotEmpty() },
                     sentAt = data["sentAt"]?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() },
+                    channel = channel,
+                    silent = silent,
+                )
+                TYPE_SCHEDULE_REMINDER -> ScheduleReminder(
+                    groupId = data["groupId"]?.toLongOrNull() ?: return null,
+                    groupName = data["groupName"].orEmpty(),
+                    scheduleId = data["scheduleId"]?.toLongOrNull() ?: return null,
+                    startsAt = data["startsAt"]?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() },
+                    allDay = data["allDay"] == "true",
+                    title = data["title"]?.takeIf { it.isNotBlank() },
                     channel = channel,
                     silent = silent,
                 )

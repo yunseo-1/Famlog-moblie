@@ -18,4 +18,8 @@ object ErrorCodes {
     const val INVITE_EXPIRED = "INVITE_EXPIRED"
     const val RATE_LIMITED = "RATE_LIMITED"
     const val GROUP_LIMIT_EXCEEDED = "GROUP_LIMIT_EXCEEDED"
+    const val GROUP_ROLE_REQUIRED = "GROUP_ROLE_REQUIRED"
+
+    /** 수정하는 사이 다른 사람이 먼저 고쳤다 (일정·할 일 version) */
+    const val VERSION_CONFLICT = "VERSION_CONFLICT"
 }
