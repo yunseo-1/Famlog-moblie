@@ -50,6 +50,7 @@ import com.famlog.core.model.MessageType
 import com.famlog.core.model.Reaction
 import com.famlog.core.model.ReplyPreview
 import com.famlog.core.model.SendState
+import com.famlog.feature.place.PlaceMessageCard
 
 /** 날짜 줄 (Caption tertiary, 가운데) */
 @Composable
@@ -100,6 +101,7 @@ fun ChatBubble(
     modifier: Modifier = Modifier,
     mediaBaseUrl: String = "",
     onOpenMedia: (index: Int) -> Unit = {},
+    onOpenPlace: (placeId: Long) -> Unit = {},
 ) {
     val colors = FamTheme.colors
     val unknownName = stringResource(R.string.chat_unknown_member)
@@ -126,11 +128,18 @@ fun ChatBubble(
             }
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(FamDimens.xs)) {
                 if (mine) MessageMeta(message, showTime, alignEnd = true)
+                val place = message.place?.takeIf { !message.deleted }
                 if (message.isMedia && !message.deleted) {
                     MediaGrid(
                         message = message,
                         baseUrl = mediaBaseUrl,
                         onOpen = onOpenMedia,
+                        onLongPress = onLongPress,
+                    )
+                } else if (place != null) {
+                    PlaceMessageCard(
+                        card = place,
+                        onClick = { onOpenPlace(place.placeId) },
                         onLongPress = onLongPress,
                     )
                 } else Column(

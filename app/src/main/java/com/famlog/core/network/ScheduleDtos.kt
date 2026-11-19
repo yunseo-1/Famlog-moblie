@@ -32,6 +32,8 @@ data class ScheduleRequest(
     /** 빈 목록이면 알림 없음. 키를 빼면 서버 기본값이라 앱은 늘 보낸다 */
     val reminders: List<String>,
     val version: Long? = null,
+    /** 이 그룹 장소 (아니면 400). 수정에서 빼면 연결이 비워지므로 기존 값을 다시 보낸다 */
+    val placeId: Long? = null,
 )
 
 @Serializable
@@ -67,6 +69,7 @@ data class ScheduleResponse(
     val reminders: List<String> = emptyList(),
     val createdBy: Long? = null,
     val version: Long,
+    val place: PlaceSummaryResponse? = null,
 )
 
 @Serializable
@@ -100,6 +103,7 @@ fun ScheduleDraft.toRequest(version: Long? = null) = ScheduleRequest(
     memo = memo?.takeIf { it.isNotBlank() },
     reminders = reminders.map { it.name },
     version = version,
+    placeId = placeId,
 )
 
 fun OccurrenceResponse.toModel(): Occurrence {
@@ -128,6 +132,7 @@ fun ScheduleResponse.toModel(): Schedule {
         reminders = reminders.mapNotNull(Reminder::of),
         createdBy = createdBy,
         version = version,
+        place = place?.toModel(),
     )
 }
 

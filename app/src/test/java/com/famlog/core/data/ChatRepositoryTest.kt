@@ -8,6 +8,8 @@ import com.famlog.core.model.LocalMedia
 import com.famlog.core.model.MediaKind
 import com.famlog.core.model.MediaStatus
 import com.famlog.core.model.MessageType
+import com.famlog.core.model.PlaceCard
+import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.SendState
 import com.famlog.core.network.ChatApi
 import com.famlog.core.network.ChatEventEnvelope
@@ -291,6 +293,32 @@ class ChatRepositoryTest {
         assertNull(reply.replyTo?.body) // 내가 들어오기 전 메시지
         assertEquals(listOf("HEART"), reply.reactions.map { it.emoji.name }) // 모르는 공감은 버린다
         assertEquals(MessageType.POLL, poll.type)
+    }
+
+    @Test
+    fun 장소_메시지는_payload로_카드를_만들고_형식이_틀리면_카드_없이_둔다() = runTest {
+        server.enqueue(
+            jsonResponse(
+                """{"items":[
+                   {"id":21,"groupId":$GROUP,"seq":1,"senderId":$OTHER,"type":"PLACE","body":"해주냉면",
+                    "payload":{"placeId":1,"name":"해주냉면","category":"RESTAURANT","address":"서울 송파구 백제고분로 1",
+                               "region1":"서울","region2":"송파구","rating":5},
+                    "reactions":[],"unreadCount":0,"deleted":false,"sentAt":"2026-11-17T13:00:00+09:00"},
+                   {"id":22,"groupId":$GROUP,"seq":2,"senderId":$OTHER,"type":"PLACE","body":"세종 카페",
+                    "payload":{"placeId":2,"name":"세종 카페","category":"NEW_KIND","region1":"세종","region2":null},
+                    "reactions":[],"unreadCount":0,"deleted":false,"sentAt":"2026-11-17T13:01:00+09:00"},
+                   {"id":23,"groupId":$GROUP,"seq":3,"senderId":$OTHER,"type":"PLACE","body":"이상한 카드",
+                    "payload":{"name":"placeId 없음"},
+                    "reactions":[],"unreadCount":0,"deleted":false,"sentAt":"2026-11-17T13:02:00+09:00"}
+                ],"hasMore":false}""",
+            ),
+        )
+        repository.refresh(GROUP)
+
+        val (full, sejong, broken) = messages()
+        assertEquals(PlaceCard(1, "해주냉면", PlaceCategory.RESTAURANT, "서울 송파구 백제고분로 1", "서울", "송파구", 5), full.place)
+        assertEquals(PlaceCard(2, "세종 카페", PlaceCategory.ETC, null, "세종", null, null), sejong.place)
+        assertNull(broken.place)
     }
 
     @Test

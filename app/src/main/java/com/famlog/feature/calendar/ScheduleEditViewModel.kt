@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.famlog.R
 import com.famlog.core.data.GroupRepository
+import com.famlog.core.data.PlaceRepository
 import com.famlog.core.data.ScheduleRepository
 import com.famlog.core.datastore.SessionStore
 import com.famlog.core.designsystem.UiText
@@ -12,6 +13,8 @@ import com.famlog.core.designsystem.toUiText
 import com.famlog.core.model.ApiResult
 import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.Member
+import com.famlog.core.model.PlaceFilter
+import com.famlog.core.model.PlaceSummary
 import com.famlog.core.model.Reminder
 import com.famlog.core.model.Repeat
 import com.famlog.core.model.RepeatFreq
@@ -55,6 +58,8 @@ data class ScheduleForm(
     val repeatUntil: LocalDate? = null,
     val reminders: List<Reminder> = Reminder.defaults(allDay = false),
     val memo: String = "",
+    /** 연결할 우리 그룹 장소 (선택) */
+    val place: PlaceSummary? = null,
 ) {
     val startsAt: Instant get() = LocalDateTime.of(startDate, startTime).atZone(SeoulZone).toInstant()
     val endsAt: Instant get() = LocalDateTime.of(endDate, endTime).atZone(SeoulZone).toInstant()
@@ -67,6 +72,9 @@ data class ScheduleForm(
     val untilBeforeStart: Boolean get() = repeatUntil?.isBefore(startDate) == true
 }
 
+/** 일정에 연결할 장소 고르기 */
+data class PlacePicker(val loading: Boolean = false, val failed: Boolean = false, val places: List<PlaceSummary> = emptyList())
+
 data class ScheduleEditUiState(
     val loading: Boolean = false,
     val isEdit: Boolean = false,
@@ -76,6 +84,8 @@ data class ScheduleEditUiState(
     /** [저장]을 한 번 누른 뒤에만 빈 칸 오류를 보인다 */
     val showErrors: Boolean = false,
     val saving: Boolean = false,
+    /** 장소 고르기 시트 (열려 있을 때만) */
+    val placePicker: PlacePicker? = null,
 ) {
     val titleMissing: Boolean get() = form.title.isBlank()
     val participantsMissing: Boolean get() = form.participants.isEmpty()
@@ -100,6 +110,7 @@ sealed interface ScheduleEditEvent {
 class ScheduleEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val scheduleRepository: ScheduleRepository,
+    private val placeRepository: PlaceRepository,
     private val groupRepository: GroupRepository,
     private val sessionStore: SessionStore,
     private val clock: Clock,
@@ -166,6 +177,28 @@ class ScheduleEditViewModel @Inject constructor(
     fun onRepeatChange(freq: RepeatFreq?) = updateForm { it.copy(repeatFreq = freq, repeatUntil = if (freq == null) null else it.repeatUntil) }
 
     fun onRepeatUntilChange(date: LocalDate?) = updateForm { it.copy(repeatUntil = date) }
+
+    /** 장소 고르기 시트를 열 때 우리 그룹 장소(최근 공유 순)를 받는다 */
+    fun openPlacePicker() {
+        val groupId = groupId ?: return
+        local.update { it.copy(placePicker = PlacePicker(loading = true)) }
+        viewModelScope.launch {
+            val result = placeRepository.page(groupId, PlaceFilter())
+            local.update { state ->
+                if (state.placePicker == null) return@update state
+                if (result is ApiResult.Success) {
+                    state.copy(placePicker = PlacePicker(places = result.value.items.map { PlaceSummary(it.id, it.name, it.address, it.category) }))
+                } else {
+                    state.copy(placePicker = PlacePicker(failed = true))
+                }
+            }
+        }
+    }
+
+    fun closePlacePicker() = local.update { it.copy(placePicker = null) }
+
+    /** null이면 장소 빼기 */
+    fun onPlaceChange(place: PlaceSummary?) = local.update { it.copy(form = it.form.copy(place = place), placePicker = null) }
 
     /** 최대 3개, 종일 일정은 전날 오후 8시만 */
     fun toggleReminder(reminder: Reminder) {
@@ -315,6 +348,7 @@ class ScheduleEditViewModel @Inject constructor(
             rrule = repeat?.toRrule(),
             memo = memo.trim().ifEmpty { null },
             reminders = if (allDay) reminders.filter { it == Reminder.PREV_DAY_20 } else reminders,
+            placeId = place?.id,
         )
     }
 
@@ -334,6 +368,7 @@ class ScheduleEditViewModel @Inject constructor(
             repeatUntil = repeat?.until,
             reminders = reminders,
             memo = memo.orEmpty(),
+            place = place,
         )
     }
 

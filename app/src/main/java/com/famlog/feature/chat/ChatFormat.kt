@@ -48,6 +48,7 @@ fun previewText(message: LastMessage, senderName: String?): String {
         message.type == MessageType.IMAGE -> stringResource(R.string.chat_preview_image)
         message.type == MessageType.VIDEO -> stringResource(R.string.chat_preview_video)
         message.type == MessageType.CANDIDATE -> stringResource(R.string.chat_preview_candidate)
+        message.type == MessageType.PLACE -> stringResource(R.string.chat_preview_place, message.body.orEmpty())
         else -> stringResource(R.string.chat_preview_other)
     }
     return if (senderName != null && message.type != MessageType.SYSTEM) {

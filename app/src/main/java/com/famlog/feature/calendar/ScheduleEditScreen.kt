@@ -14,14 +14,18 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -31,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -56,10 +63,13 @@ import com.famlog.core.designsystem.component.FamTextField
 import com.famlog.core.designsystem.component.FamTopBar
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
+import com.famlog.core.model.PlaceSummary
 import com.famlog.core.model.Reminder
 import com.famlog.core.model.RepeatFreq
 import com.famlog.feature.chat.formatTime
 import com.famlog.feature.chat.SeoulZone
+import com.famlog.feature.place.PlaceRow
+import com.famlog.feature.place.labelRes
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -99,8 +109,17 @@ fun ScheduleEditScreen(
         onToggleReminder = viewModel::toggleReminder,
         onMemoChange = viewModel::onMemoChange,
         onSave = viewModel::save,
+        onOpenPlacePicker = viewModel::openPlacePicker,
         snackbarHostState = snackbarHostState,
     )
+    state.placePicker?.let { picker ->
+        PlacePickerSheet(
+            picker = picker,
+            selectedId = state.form.place?.id,
+            onDismiss = viewModel::closePlacePicker,
+            onPick = viewModel::onPlaceChange,
+        )
+    }
 }
 
 /** 날짜·시간 고르기 창. 한 번에 하나만 연다 */
@@ -129,6 +148,7 @@ fun ScheduleEditContent(
     onToggleReminder: (Reminder) -> Unit,
     onMemoChange: (String) -> Unit,
     onSave: () -> Unit,
+    onOpenPlacePicker: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val colors = FamTheme.colors
@@ -268,6 +288,14 @@ fun ScheduleEditContent(
                     )
                 }
 
+                Field(label = stringResource(R.string.place_field)) {
+                    PickerBox(
+                        text = form.place?.name ?: stringResource(R.string.place_none),
+                        onClick = onOpenPlacePicker,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
                 FamTextField(
                     value = form.memo,
                     onValueChange = onMemoChange,
@@ -298,6 +326,73 @@ fun ScheduleEditContent(
         PickerTarget.StartTime -> TimePickerDialogFor(form.startTime, { picker = null }) { onStartTimeChange(it) }
         PickerTarget.EndTime -> TimePickerDialogFor(form.endTime, { picker = null }) { onEndTimeChange(it) }
         null -> Unit
+    }
+}
+
+/** 일정에 연결할 우리 그룹 장소 고르기. 맨 위 "장소 빼기"로 연결을 비운다 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlacePickerSheet(
+    picker: PlacePicker,
+    selectedId: Long?,
+    onDismiss: () -> Unit,
+    onPick: (PlaceSummary?) -> Unit,
+) {
+    val colors = FamTheme.colors
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = colors.bgDefault,
+        dragHandle = { BottomSheetDefaults.DragHandle(width = 36.dp, height = 4.dp, color = colors.surfacePlaceholder) },
+    ) {
+        Text(
+            stringResource(R.string.place_pick_title),
+            style = FamTheme.type.titleMedium,
+            color = colors.textPrimary,
+            modifier = Modifier.padding(horizontal = FamDimens.lg, vertical = FamDimens.sm).semantics { heading() },
+        )
+        LazyColumn(Modifier.fillMaxWidth().navigationBarsPadding()) {
+            if (selectedId != null) {
+                item(key = "clear") {
+                    TextButton(onClick = { onPick(null) }, modifier = Modifier.padding(horizontal = FamDimens.sm)) {
+                        Text(stringResource(R.string.place_pick_clear), style = FamTheme.type.label, color = colors.statusDanger)
+                    }
+                }
+            }
+            when {
+                picker.loading -> item(key = "loading") {
+                    Box(Modifier.fillMaxWidth().padding(FamDimens.xxl), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = colors.brandPrimary)
+                    }
+                }
+                picker.failed -> item(key = "failed") {
+                    Text(
+                        stringResource(R.string.place_load_failed),
+                        style = FamTheme.type.bodyMedium,
+                        color = colors.statusDanger,
+                        modifier = Modifier.padding(FamDimens.lg),
+                    )
+                }
+                picker.places.isEmpty() -> item(key = "empty") {
+                    Text(
+                        stringResource(R.string.place_pick_empty),
+                        style = FamTheme.type.bodyMedium,
+                        color = colors.textTertiary,
+                        modifier = Modifier.padding(FamDimens.lg),
+                    )
+                }
+            }
+            items(picker.places, key = { it.id }) { place ->
+                PlaceRow(
+                    name = place.name,
+                    subtitle = listOfNotNull(stringResource(place.category.labelRes()), place.address).joinToString(" · "),
+                    rating = null,
+                    onClick = { onPick(place) },
+                    modifier = if (place.id == selectedId) Modifier.background(colors.brandSubtle) else Modifier,
+                )
+            }
+        }
     }
 }
 
