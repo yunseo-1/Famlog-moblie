@@ -108,6 +108,8 @@ object ChatEventTypes {
     const val MEDIA_UPDATED = "media.updated"
     const val ERROR = "error"
     const val SESSION_REVOKED = "session.revoked"
+    const val CANDIDATE_CREATED = "candidate.created"
+    const val CANDIDATE_RESOLVED = "candidate.resolved"
 }
 
 fun parseServerTime(value: String): Instant = OffsetDateTime.parse(value).toInstant()

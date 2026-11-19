@@ -47,4 +47,19 @@ class ChatRowsTest {
         assertEquals(listOf(true, false, true, false, true), rows.map { it.showSender })
         assertEquals(listOf(false, true, true, false, true), rows.map { it.showTime })
     }
+
+    @Test
+    fun 지운_시스템_메시지는_빼고_지운_일반_메시지는_남긴다() {
+        // 후보 승인을 되돌리면 "엄마님이 '…' 일정을 캘린더에 등록했어요."가 지워진다
+        val rows = buildChatRows(
+            listOf(
+                message(1, 8, "2026-11-17T15:12:05+09:00").copy(deleted = true),
+                message(2, null, "2026-11-17T15:12:40+09:00", MessageType.SYSTEM).copy(deleted = true),
+                message(3, null, "2026-11-17T15:13:00+09:00", MessageType.SYSTEM),
+            ),
+            SeoulZone,
+        )
+
+        assertEquals(listOf("date:2026-11-17", "k1", "k3"), rows.map { it.key })
+    }
 }

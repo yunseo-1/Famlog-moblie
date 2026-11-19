@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.famlog.R
+import com.famlog.core.model.CandidateType
 
 @Immutable
 data class FamColors(
@@ -46,6 +47,8 @@ data class FamColors(
     val categoryTodo: Color = Color(0xFF7A4FE0),
     val categoryTodoBg: Color = Color(0xFFF1ECFF),
     val statusDanger: Color = Color(0xFFD93A3A),
+    /** 원문 보기로 추출 부분을 형광펜처럼 칠한다 (Figma 미정, 두 말풍선 색 위에서 모두 보이는 노랑) */
+    val textHighlight: Color = Color(0xFFFFE27A),
     /** 사진·동영상 전체 화면 보기 배경과 그 위 글자·아이콘 (Figma 미디자인, 사진이 잘 보이도록 검정) */
     val mediaViewerBackground: Color = Color(0xFF000000),
     val onMediaViewer: Color = Color(0xFFFFFFFF),
@@ -72,8 +75,6 @@ data class FamColors(
 fun Color.toHexRgb(): String = "#%06X".format(toArgb() and 0xFFFFFF)
 
 /** 후보 카드·칩·캘린더·지도 핀에 공통으로 쓰는 유형 색 (패턴 B) */
-enum class CandidateType { SCHEDULE, ANNIVERSARY, TODO, PLACE }
-
 fun FamColors.categoryOf(type: CandidateType): Pair<Color, Color> = when (type) {
     CandidateType.SCHEDULE -> categorySchedule to categoryScheduleBg
     CandidateType.ANNIVERSARY -> categoryAnniversary to categoryAnniversaryBg

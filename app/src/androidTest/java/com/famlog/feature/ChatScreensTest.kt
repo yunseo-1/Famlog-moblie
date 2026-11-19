@@ -89,7 +89,6 @@ class ChatScreensTest {
             message(1, null, "엄마님이 들어왔어요.", MessageType.SYSTEM),
             message(2, 8, "이번 토요일 11시에 할머니 댁 가자"),
             message(3, 7, "좋아요! 가는 길에 과일 사 갈게요", unread = 1),
-            message(4, 8, "", MessageType.CANDIDATE),
         )
         var longPressed: ChatMessage? = null
         compose.setContent {
@@ -115,7 +114,6 @@ class ChatScreensTest {
         // 상대 묶음마다 이름(엄마) — 서랍의 구성원 목록에도 있다
         assert(compose.onAllNodesWithText("엄마").fetchSemanticsNodes().size >= 2)
         compose.onNodeWithContentDescription("안 읽은 사람 1명").assertExists()
-        compose.onNodeWithText("AI 제안 카드가 여기에 표시돼요.").assertExists()
         compose.onNodeWithContentDescription("보내기").assertIsNotEnabled()
 
         compose.onNodeWithText("이번 토요일 11시에 할머니 댁 가자").performTouchInput { longClick() }

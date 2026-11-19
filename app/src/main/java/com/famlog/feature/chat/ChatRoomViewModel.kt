@@ -19,7 +19,9 @@ import com.famlog.core.model.Member
 import com.famlog.core.model.ReactionEmoji
 import com.famlog.core.model.SendState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -52,6 +54,8 @@ data class ChatRoomUiState(
     val inviting: Boolean = false,
     /** 사진 주소를 만들 서버 주소 (…/api/v1/) */
     val mediaBaseUrl: String = "",
+    /** 원문 보기로 강조 중인 메시지 ID → 추출 부분 (ARC-05 근거) */
+    val highlights: Map<Long, List<String>> = emptyMap(),
 ) {
     val canSend: Boolean get() = input.isNotBlank()
 
@@ -61,6 +65,9 @@ data class ChatRoomUiState(
 sealed interface ChatRoomEvent {
     data class Message(val text: UiText) : ChatRoomEvent
     data class ShareInvite(val groupName: String, val code: String) : ChatRoomEvent
+
+    /** 이 줄(ChatRow.key)로 스크롤한다 */
+    data class ScrollTo(val key: String) : ChatRoomEvent
 }
 
 /** 메시지 메뉴(길게 누르기)에 보일 동작 */
@@ -92,6 +99,7 @@ class ChatRoomViewModel @Inject constructor(
     private val myUserId = MutableStateFlow<Long?>(null)
     private val visible = MutableStateFlow(false)
     private val messages: Flow<List<ChatMessage>> = chatRepository.messages(groupId)
+    private var focusJob: Job? = null
 
     private data class LocalState(
         val input: String = "",
@@ -99,6 +107,7 @@ class ChatRoomViewModel @Inject constructor(
         val loadingOlder: Boolean = false,
         val hasOlder: Boolean = true,
         val inviting: Boolean = false,
+        val highlights: Map<Long, List<String>> = emptyMap(),
     )
 
     val uiState: StateFlow<ChatRoomUiState> = combine(
@@ -124,6 +133,7 @@ class ChatRoomViewModel @Inject constructor(
             hasOlder = local.hasOlder,
             inviting = local.inviting,
             mediaBaseUrl = apiBaseUrl,
+            highlights = local.highlights,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatRoomUiState())
 
@@ -204,6 +214,35 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 근거 메시지로 가서 [spans](메시지 ID → 추출 부분)를 잠시 강조한다.
+     * 아직 안 받은 옛 메시지면 이전 메시지를 이어 받는다 (최대 [MAX_FOCUS_PAGES]쪽).
+     */
+    fun focus(seq: Long, spans: Map<Long, List<String>>) {
+        focusJob?.cancel()
+        focusJob = viewModelScope.launch {
+            var target = messages.first().firstOrNull { it.seq == seq }
+            var pages = 0
+            while (target == null && pages < MAX_FOCUS_PAGES) {
+                val more = chatRepository.loadOlder(groupId)
+                pages++
+                target = messages.first().firstOrNull { it.seq == seq }
+                if (more !is ApiResult.Success || !more.value) {
+                    if (more is ApiResult.Success) local.update { it.copy(hasOlder = false) }
+                    break
+                }
+            }
+            if (target == null || target.deleted) {
+                _events.send(ChatRoomEvent.Message(UiText.Res(R.string.candidate_evidence_missing)))
+                return@launch
+            }
+            local.update { it.copy(highlights = spans) }
+            _events.send(ChatRoomEvent.ScrollTo(target.key))
+            delay(HIGHLIGHT_MS)
+            local.update { it.copy(highlights = emptyMap()) }
+        }
+    }
+
     fun actionsFor(message: ChatMessage): MessageActions {
         val me = uiState.value.myUserId
         val sent = message.sendState == SendState.SENT && message.id != null
@@ -260,5 +299,7 @@ class ChatRoomViewModel @Inject constructor(
     private companion object {
         /** 서버 ChatDtos.MAX_BODY_LENGTH */
         const val MAX_BODY_LENGTH = 2000
+        const val MAX_FOCUS_PAGES = 20
+        const val HIGHLIGHT_MS = 3_000L
     }
 }

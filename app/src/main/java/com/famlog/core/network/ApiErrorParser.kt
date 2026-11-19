@@ -7,14 +7,14 @@ import okhttp3.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** 에러 응답 본문을 { code, message, traceId }로 읽는다. 형식이 다르면 null */
+/** 에러 응답 본문을 { code, message, traceId, fieldErrors }로 읽는다. 형식이 다르면 null */
 @Singleton
 class ApiErrorParser @Inject constructor(private val json: Json) {
 
     fun parse(body: String?): ApiError? {
         if (body.isNullOrBlank()) return null
         return try {
-            json.decodeFromString<ErrorResponse>(body).let { ApiError(it.code, it.message, it.traceId) }
+            json.decodeFromString<ErrorResponse>(body).let { ApiError(it.code, it.message, it.traceId, it.fieldErrors.map { e -> e.field }) }
         } catch (e: SerializationException) {
             null
         } catch (e: IllegalArgumentException) {

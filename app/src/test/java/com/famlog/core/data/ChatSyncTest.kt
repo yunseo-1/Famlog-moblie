@@ -29,6 +29,7 @@ class ChatSyncTest {
 
     private val socket = FakeChatSocket()
     private val chat = mockk<ChatRepository>(relaxed = true)
+    private val candidates = mockk<CandidateRepository>(relaxed = true)
     private val groupList = MutableStateFlow(listOf(GroupSummary(1, "우리 가족", 2, GroupRole.OWNER)))
     private val groups = mockk<GroupRepository>(relaxed = true) { every { groups } returns groupList }
     private val tokens = FakeTokenStore(AuthTokens("access-1", "refresh-1"))
@@ -39,7 +40,7 @@ class ChatSyncTest {
     }
 
     private fun TestScope.start(): ChatSync =
-        ChatSync(socket, chat, groups, tokens, sessionEvents, monitor, backgroundScope).also {
+        ChatSync(socket, chat, candidates, groups, tokens, sessionEvents, monitor, backgroundScope).also {
             it.start()
             it.setForeground(true)
             runCurrent()

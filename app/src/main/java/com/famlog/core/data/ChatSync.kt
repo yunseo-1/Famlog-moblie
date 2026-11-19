@@ -35,6 +35,7 @@ import javax.inject.Singleton
 class ChatSync @Inject constructor(
     private val socket: ChatSocket,
     private val chatRepository: ChatRepository,
+    private val candidateRepository: CandidateRepository,
     private val groupRepository: GroupRepository,
     private val tokenStore: TokenStore,
     private val sessionEvents: SessionEvents,
@@ -68,6 +69,7 @@ class ChatSync @Inject constructor(
                 if (event == SessionEvent.LoggedOut) {
                     socket.disconnect()
                     chatRepository.clear()
+                    candidateRepository.clear()
                 }
             }
         }
@@ -132,7 +134,10 @@ class ChatSync @Inject constructor(
                 chatRepository.syncCached(groupRepository.groups.value.map { it.id })
                 flushPending()
             }
-            is SocketEvent.Group -> chatRepository.onGroupEvent(event.groupId, event.event)
+            is SocketEvent.Group -> {
+                chatRepository.onGroupEvent(event.groupId, event.event)
+                candidateRepository.onGroupEvent(event.groupId, event.event)
+            }
             is SocketEvent.User -> when (event.event.type) {
                 // 다른 기기에서 이 세션을 로그아웃시켰다 → REST가 401 AUTH_INVALID를 받아 로그인 화면으로 간다
                 ChatEventTypes.SESSION_REVOKED -> groupRepository.refreshGroups()

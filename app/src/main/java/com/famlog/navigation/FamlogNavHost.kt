@@ -151,6 +151,7 @@ fun FamlogNavHost(
                         navController.navigate(MediaViewerRoute(groupId, messageId, index))
                     },
                     onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
+                    onOpenSchedule = { navController.navigate(ScheduleDetailRoute(it)) },
                 )
             }
             composable<MediaViewerRoute> { MediaViewerScreen(onClose = { navController.popBackStack() }) }

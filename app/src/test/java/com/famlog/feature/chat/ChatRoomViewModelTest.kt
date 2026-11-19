@@ -27,6 +27,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -151,6 +152,27 @@ class ChatRoomViewModelTest {
             assertEquals(ChatRoomEvent.Message(UiText.Res(R.string.chat_media_skipped, listOf(1))), awaitItem())
         }
         coVerify { chat.sendMedia(GROUP, listOf(photo)) }
+    }
+
+    @Test
+    fun 원문_보기는_옛_메시지면_이전_메시지를_받아_가서_잠시_강조한다() = runTest(mainRule.dispatcher) {
+        messages.value = listOf(message(40, OTHER), message(41, ME))
+        coEvery { chat.loadOlder(GROUP) } coAnswers {
+            messages.value = listOf(message(20, OTHER)) + messages.value
+            ApiResult.Success(true)
+        }
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.events.test {
+            viewModel.focus(20, mapOf(20L to listOf("토요일")))
+            assertEquals(ChatRoomEvent.ScrollTo("k20"), awaitItem())
+        }
+        coVerify(exactly = 1) { chat.loadOlder(GROUP) }
+        assertEquals(mapOf(20L to listOf("토요일")), viewModel.uiState.value.highlights)
+
+        advanceTimeBy(3_001)
+        assertTrue(viewModel.uiState.value.highlights.isEmpty())
     }
 
     private companion object {

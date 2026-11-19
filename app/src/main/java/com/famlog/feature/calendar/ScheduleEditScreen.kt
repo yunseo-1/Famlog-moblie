@@ -424,7 +424,7 @@ internal fun DatePickerDialogFor(initial: LocalDate, onDismiss: () -> Unit, onPi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimePickerDialogFor(initial: LocalTime, onDismiss: () -> Unit, onPick: (LocalTime) -> Unit) {
+internal fun TimePickerDialogFor(initial: LocalTime, onDismiss: () -> Unit, onPick: (LocalTime) -> Unit) {
     val pickerState = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = false)
     AlertDialog(
         onDismissRequest = onDismiss,
