@@ -265,8 +265,7 @@
     <string name="place_region_all_of">%1$s 전체</string>
     <string name="place_count">%1$d곳</string>
     <string name="place_list_header">%1$s · %2$d곳</string>
-    <string name="place_empty">아직 공유한 장소가 없어요.
-오른쪽 아래 버튼으로 가족에게 장소를 알려 주세요.</string>
+    <string name="place_empty">아직 공유한 장소가 없어요.\n오른쪽 아래 버튼으로 가족에게 장소를 알려 주세요.</string>
     <string name="place_empty_filtered">조건에 맞는 장소가 없어요.</string>
     <string name="place_load_failed">장소를 불러오지 못했어요.</string>
     <string name="place_retry">다시 시도</string>
@@ -311,4 +310,41 @@
     <string name="place_pick_title">장소 선택</string>
     <string name="place_pick_clear">장소 빼기</string>
     <string name="place_pick_empty">아직 공유한 장소가 없어요. 장소 탭에서 먼저 공유해 주세요.</string>
+
+    <!-- 장소 지도·내 주변·별칭 (S15-2, PLC-04·06) -->
+    <string name="place_tab_map">지도</string>
+    <string name="place_tab_list">리스트</string>
+    <string name="place_map_header">화면 안 %1$d곳</string>
+    <string name="place_map_empty">지도를 옮기면 그 지역 장소를 보여 줘요.</string>
+    <string name="place_map_unavailable">지도를 쓰려면 카카오 앱 키가 필요해요.</string>
+    <string name="place_map_error">지도를 불러오지 못했어요.</string>
+    <string name="place_nearby">내 주변</string>
+    <string name="place_nearby_header">내 주변 %1$dkm · %2$d곳</string>
+    <string name="place_nearby_close">닫기</string>
+    <string name="place_nearby_empty">주변 %1$dkm 안에 공유한 장소가 없어요.</string>
+    <string name="place_nearby_unavailable">지금은 내 주변 기능을 쓸 수 없어요.</string>
+    <string name="place_location_denied">위치 권한이 없어 내 주변을 찾을 수 없어요. 설정에서 바꿀 수 있어요.</string>
+    <string name="place_location_failed">현재 위치를 찾지 못했어요. 잠시 후 다시 해 주세요.</string>
+    <string name="place_my_location">내 위치</string>
+    <string name="place_consent_title">위치기반서비스 이용 동의</string>
+    <string name="place_consent_body">내 주변 장소를 찾을 때 휴대폰의 대략적인 위치를 써요.\n\n· 위치는 검색할 때만 쓰고 저장하지 않아요.\n· 가족에게 내 위치를 알리지 않아요.\n· 언제 썼는지는 법에 따라 기록돼요.\n· 동의는 설정에서 언제든 거둘 수 있어요.</string>
+    <string name="place_consent_version">위치기반서비스 이용약관 %1$s (전문은 정식 출시 전에 볼 수 있어요)</string>
+    <string name="place_consent_agree">동의하고 계속</string>
+    <string name="place_consent_changed">약관이 바뀌었어요. 바뀐 내용을 확인해 주세요.</string>
+    <string name="place_alias_entry">우리 가족 별칭 %1$d개</string>
+    <string name="place_alias_entry_empty">우리 가족 별칭 만들기</string>
+    <string name="place_alias_title">우리 가족 별칭</string>
+    <string name="place_alias_guide">“할머니 댁”, “우리 집”처럼 검색이 안 되는 곳에 이름을 붙여요. 우리 가족만 볼 수 있어요.</string>
+    <string name="place_alias_empty">아직 별칭이 없어요.</string>
+    <string name="place_alias_load_failed">별칭을 불러오지 못했어요.</string>
+    <string name="place_alias_add">별칭 추가</string>
+    <string name="place_alias_field">별칭</string>
+    <string name="place_alias_hint">예: 할머니 댁</string>
+    <string name="place_alias_required">별칭을 적어 주세요.</string>
+    <string name="place_alias_duplicated">이미 있는 별칭이에요.</string>
+    <string name="place_alias_place">연결할 장소 (선택)</string>
+    <string name="place_alias_address">주소 (선택)</string>
+    <string name="place_alias_address_hint">예: 경기 수원시 영통구 …</string>
+    <string name="place_alias_delete">%1$s 삭제</string>
+    <string name="place_alias_no_place">연결한 장소 없음</string>
 </resources>

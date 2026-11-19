@@ -1,7 +1,9 @@
 package com.famlog.core.data
 
 import com.famlog.core.model.ApiResult
+import com.famlog.core.model.Coordinates
 import com.famlog.core.model.ErrorCodes
+import com.famlog.core.model.MapBounds
 import com.famlog.core.model.Place
 import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.PlaceEdit
@@ -193,6 +195,69 @@ class PlaceRepositoryTest {
             expectNoEvents()
         }
         assertEquals("DELETE", server.takeRequest().method)
+    }
+
+    @Test
+    fun 지도_영역은_네_꼭짓점을_모두_보낸다() = runTest {
+        server.enqueue(jsonResponse("""{"items":[]}"""))
+
+        repository.page(GROUP, PlaceFilter(categories = setOf(PlaceCategory.CAFE), bounds = MapBounds(37.1, 126.9, 37.6, 127.2)))
+
+        assertEquals(
+            "/api/v1/groups/$GROUP/places?category=CAFE&size=50&swLat=37.1&swLng=126.9&neLat=37.6&neLng=127.2",
+            server.takeRequest().path,
+        )
+    }
+
+    @Test
+    fun 내_주변은_좌표와_반경_3km를_보내고_거리순_결과를_읽는다() = runTest {
+        server.enqueue(jsonResponse("""{"items":[{"place":${placeJson(1)},"distanceM":850}]}"""))
+
+        val nearby = (repository.nearby(GROUP, Coordinates(37.5, 127.1)) as ApiResult.Success).value
+
+        assertEquals("/api/v1/groups/$GROUP/places/nearby?lat=37.5&lng=127.1&radiusKm=3", server.takeRequest().path)
+        assertEquals(850, nearby.single().distanceM)
+        assertEquals("해주냉면", nearby.single().place.name)
+    }
+
+    @Test
+    fun 위치_동의가_없으면_403_코드를_돌려준다() = runTest {
+        server.enqueue(errorResponse(403, ErrorCodes.LOCATION_CONSENT_REQUIRED))
+
+        assertEquals(ErrorCodes.LOCATION_CONSENT_REQUIRED, repository.nearby(GROUP, Coordinates(37.5, 127.1)).errorCode)
+    }
+
+    @Test
+    fun 좌표는_toString에_드러나지_않는다() {
+        assertFalse(Coordinates(37.123, 127.456).toString().contains("37"))
+    }
+
+    @Test
+    fun 별칭은_빈_주소를_빼고_보내며_목록에_바뀜을_알린다() = runTest {
+        server.enqueue(jsonResponse("""{"id":5,"alias":"할머니 댁","place":null,"addressText":null,"createdBy":$ME}""", code = 201))
+        server.enqueue(jsonResponse("""{"items":[{"id":5,"alias":"할머니 댁","place":{"id":1,"name":"해주냉면","address":"서울","category":"RESTAURANT"},"createdBy":$ME}]}"""))
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        repository.changes.test {
+            repository.createAlias(GROUP, "  할머니 댁 ", placeId = 1, addressText = "  ")
+            assertEquals(GROUP, awaitItem())
+            val aliases = (repository.aliases(GROUP) as ApiResult.Success).value
+            assertEquals("해주냉면", aliases.single().place?.name)
+            repository.deleteAlias(GROUP, aliases.single())
+            assertEquals(GROUP, awaitItem())
+        }
+
+        val create = server.takeRequest()
+        val body = testJson.parseToJsonElement(create.body.readUtf8()).jsonObject
+        assertEquals("/api/v1/groups/$GROUP/place-aliases", create.path)
+        assertEquals("할머니 댁", body["alias"]!!.jsonPrimitive.content)
+        assertEquals("1", body["placeId"]!!.jsonPrimitive.content)
+        assertFalse(body.containsKey("addressText"))
+        assertEquals("GET", server.takeRequest().method)
+        server.takeRequest().let {
+            assertEquals("DELETE", it.method)
+            assertEquals("/api/v1/groups/$GROUP/place-aliases/5", it.path)
+        }
     }
 
     private fun body(): JsonObject = testJson.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject

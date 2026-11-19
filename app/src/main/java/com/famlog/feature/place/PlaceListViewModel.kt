@@ -33,6 +33,8 @@ data class PlaceListUiState(
     val nextCursor: String? = null,
     /** 지역 선택 시트의 개수 배지 (구성원·카테고리 필터 반영). 못 받았으면 null */
     val regions: RegionCounts? = null,
+    /** 별칭 장소 수 (PLC-06, 리스트 위 진입 줄). 못 받았으면 null */
+    val aliasCount: Int? = null,
     val loading: Boolean = false,
     val loadingMore: Boolean = false,
     val loadFailed: Boolean = false,
@@ -63,10 +65,11 @@ class PlaceListViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             groupRepository.currentGroupId.filterNotNull().distinctUntilChanged().collect { groupId ->
-                local.update { it.copy(groupId = groupId, places = emptyList(), regions = null, filter = PlaceFilter()) }
+                local.update { it.copy(groupId = groupId, places = emptyList(), regions = null, aliasCount = null, filter = PlaceFilter()) }
                 launch { if (groupRepository.details.value[groupId] == null) groupRepository.detail(groupId) }
                 load()
                 loadRegions()
+                loadAliasCount()
             }
         }
         // 공유·수정·삭제하고 돌아오면 다시 받는다
@@ -75,6 +78,7 @@ class PlaceListViewModel @Inject constructor(
                 if (groupId == local.value.groupId) {
                     load()
                     loadRegions()
+                    loadAliasCount()
                 }
             }
         }
@@ -84,6 +88,7 @@ class PlaceListViewModel @Inject constructor(
         if (local.value.groupId == null) return
         load()
         loadRegions()
+        loadAliasCount()
     }
 
     /** [region1]이 null이면 전체 지역. [region2]가 null이면 시·도 전체 */
@@ -149,6 +154,14 @@ class PlaceListViewModel @Inject constructor(
                     it.copy(loading = false, loadFailed = true)
                 }
             }
+        }
+    }
+
+    private fun loadAliasCount() {
+        val groupId = local.value.groupId ?: return
+        viewModelScope.launch {
+            val result = placeRepository.aliases(groupId)
+            if (result is ApiResult.Success) local.update { if (it.groupId == groupId) it.copy(aliasCount = result.value.size) else it }
         }
     }
 

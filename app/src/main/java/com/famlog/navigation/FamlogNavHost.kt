@@ -48,6 +48,7 @@ import com.famlog.feature.group.GroupStartScreen
 import com.famlog.feature.group.GroupSwitcherSheet
 import com.famlog.feature.group.RoleSetupScreen
 import com.famlog.feature.group.shareInvite
+import com.famlog.feature.place.PlaceAliasScreen
 import com.famlog.feature.place.PlaceDetailScreen
 import com.famlog.feature.place.PlaceScreen
 import com.famlog.feature.place.PlaceSearchScreen
@@ -186,6 +187,13 @@ fun FamlogNavHost(
                 PlaceScreen(
                     onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
                     onAddPlace = { navController.navigate(PlaceSearchRoute) },
+                    onOpenAliases = { navController.navigate(PlaceAliasRoute) },
+                )
+            }
+            composable<PlaceAliasRoute> {
+                PlaceAliasScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
                 )
             }
             composable<PlaceSearchRoute> {

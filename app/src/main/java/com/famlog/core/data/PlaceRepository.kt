@@ -1,7 +1,10 @@
 package com.famlog.core.data
 
 import com.famlog.core.model.ApiResult
+import com.famlog.core.model.Coordinates
+import com.famlog.core.model.NearbyPlace
 import com.famlog.core.model.Place
+import com.famlog.core.model.PlaceAlias
 import com.famlog.core.model.PlaceEdit
 import com.famlog.core.model.PlaceFilter
 import com.famlog.core.model.PlaceMarkKind
@@ -11,6 +14,7 @@ import com.famlog.core.model.PlaceSearchPage
 import com.famlog.core.model.PlaceShare
 import com.famlog.core.model.RegionCounts
 import com.famlog.core.network.ApiCaller
+import com.famlog.core.network.CreateAliasRequest
 import com.famlog.core.network.PlaceApi
 import com.famlog.core.network.SharePlaceRequest
 import com.famlog.core.network.toModel
@@ -60,8 +64,28 @@ class PlaceRepository @Inject constructor(
             category = filter.categories.sortedBy { it.ordinal }.map { it.name },
             cursor = cursor,
             size = PAGE_SIZE,
+            swLat = filter.bounds?.swLat,
+            swLng = filter.bounds?.swLng,
+            neLat = filter.bounds?.neLat,
+            neLng = filter.bounds?.neLng,
         ).toModel()
     }
+
+    /** 내 주변 [radiusKm] km 안 (가까운 순). [at]은 요청에만 쓰고 저장·로그하지 않는다 */
+    suspend fun nearby(groupId: Long, at: Coordinates, radiusKm: Int = NEARBY_RADIUS_KM): ApiResult<List<NearbyPlace>> =
+        caller.call { api.nearby(groupId, at.lat, at.lng, radiusKm).items.map { it.toModel() } }
+
+    suspend fun aliases(groupId: Long): ApiResult<List<PlaceAlias>> =
+        caller.call { api.aliases(groupId).items.map { it.toModel() } }
+
+    /** [placeId]와 [addressText]는 둘 다 선택. 빈 주소는 보내지 않는다 */
+    suspend fun createAlias(groupId: Long, alias: String, placeId: Long?, addressText: String?): ApiResult<PlaceAlias> =
+        caller.call {
+            api.createAlias(groupId, CreateAliasRequest(alias.trim(), placeId, addressText?.trim()?.takeIf { it.isNotEmpty() })).toModel()
+        }.also { notifyIfSuccess(it, groupId) }
+
+    suspend fun deleteAlias(groupId: Long, alias: PlaceAlias): ApiResult<Unit> =
+        caller.call { api.deleteAlias(groupId, alias.id) }.also { notifyIfSuccess(it, groupId) }
 
     /** 지역 배지는 구성원·카테고리 필터만 반영한다 */
     suspend fun regions(groupId: Long, filter: PlaceFilter): ApiResult<RegionCounts> = caller.call {
@@ -84,8 +108,11 @@ class PlaceRepository @Inject constructor(
         if (result is ApiResult.Success) _changes.tryEmit(groupId)
     }
 
-    private companion object {
+    companion object {
         /** 서버 기본 50, 최대 100 */
-        const val PAGE_SIZE = 50
+        private const val PAGE_SIZE = 50
+
+        /** 사양 PLC-04 "내 주변 N km". 서버 기본값과 같다 */
+        const val NEARBY_RADIUS_KM = 3
     }
 }

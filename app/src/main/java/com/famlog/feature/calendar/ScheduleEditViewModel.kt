@@ -23,6 +23,7 @@ import com.famlog.core.model.ScheduleConflict
 import com.famlog.core.model.ScheduleDraft
 import com.famlog.core.model.errorCode
 import com.famlog.feature.chat.SeoulZone
+import com.famlog.feature.place.PlacePicker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
@@ -71,9 +72,6 @@ data class ScheduleForm(
     val endBeforeStart: Boolean get() = if (allDay) endDate.isBefore(startDate) else endsAt.isBefore(startsAt)
     val untilBeforeStart: Boolean get() = repeatUntil?.isBefore(startDate) == true
 }
-
-/** 일정에 연결할 장소 고르기 */
-data class PlacePicker(val loading: Boolean = false, val failed: Boolean = false, val places: List<PlaceSummary> = emptyList())
 
 data class ScheduleEditUiState(
     val loading: Boolean = false,

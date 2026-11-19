@@ -134,6 +134,10 @@ object NetworkModule {
     fun providePlaceApi(retrofit: Retrofit): PlaceApi = retrofit.create(PlaceApi::class.java)
 
     @Provides
+    @Singleton
+    fun provideConsentApi(retrofit: Retrofit): ConsentApi = retrofit.create(ConsentApi::class.java)
+
+    @Provides
     @ApiBaseUrl
     fun provideApiBaseUrl(): String = BuildConfig.API_BASE_URL
 
