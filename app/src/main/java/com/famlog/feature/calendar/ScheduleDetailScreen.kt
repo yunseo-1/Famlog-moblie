@@ -43,6 +43,8 @@ import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
 import com.famlog.core.model.Schedule
 import com.famlog.feature.chat.SeoulZone
+import com.famlog.feature.place.PlaceRow
+import com.famlog.feature.place.labelRes
 import java.time.LocalDate
 
 /** SCR-21 일정 상세 (SCH-01). 수정·삭제는 등록한 사람 또는 관리자 이상에게만 보인다 */
@@ -50,6 +52,7 @@ import java.time.LocalDate
 fun ScheduleDetailScreen(
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
+    onOpenPlace: (Long) -> Unit = {},
     viewModel: ScheduleDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -68,6 +71,7 @@ fun ScheduleDetailScreen(
         onBack = onBack,
         onEdit = { onEdit(viewModel.scheduleId) },
         onDelete = viewModel::delete,
+        onOpenPlace = onOpenPlace,
         snackbarHostState = snackbarHostState,
     )
 }
@@ -79,6 +83,7 @@ fun ScheduleDetailContent(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onOpenPlace: (Long) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val colors = FamTheme.colors
@@ -101,7 +106,7 @@ fun ScheduleDetailContent(
                     CircularProgressIndicator(color = colors.brandPrimary)
                 }
             } else {
-                ScheduleBody(schedule, state)
+                ScheduleBody(schedule, state, onOpenPlace)
             }
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
@@ -136,7 +141,7 @@ fun ScheduleDetailContent(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ScheduleBody(schedule: Schedule, state: ScheduleDetailUiState) {
+private fun ScheduleBody(schedule: Schedule, state: ScheduleDetailUiState, onOpenPlace: (Long) -> Unit) {
     val colors = FamTheme.colors
     val today = LocalDate.now(SeoulZone)
     Column(
@@ -196,6 +201,18 @@ private fun ScheduleBody(schedule: Schedule, state: ScheduleDetailUiState) {
                 schedule.reminders.map { it.label() }.joinToString(", ")
             }
             Text(text, style = FamTheme.type.bodyMedium, color = colors.textPrimary)
+        }
+
+        schedule.place?.let { place ->
+            DetailField(stringResource(R.string.place_field)) {
+                PlaceRow(
+                    name = place.name,
+                    subtitle = listOfNotNull(stringResource(place.category.labelRes()), place.address).joinToString(" · "),
+                    rating = null,
+                    onClick = { onOpenPlace(place.id) },
+                    horizontalPadding = 0.dp,
+                )
+            }
         }
 
         schedule.memo?.takeIf { it.isNotBlank() }?.let { memo ->

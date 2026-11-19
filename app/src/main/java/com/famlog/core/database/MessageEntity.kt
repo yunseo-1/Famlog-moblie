@@ -14,6 +14,7 @@ import androidx.room.PrimaryKey
  * @param localOrder 보내기 전 메시지의 순서 (만든 시각, 밀리초)
  * @param mediaJson 서버의 사진·동영상 목록 (MediaResponse 배열 JSON)
  * @param localMediaJson 올리는 중인 내 파일 (LocalMediaJson 배열). 서버가 메시지를 돌려주면 null
+ * @param payloadJson 서버가 만든 메시지의 추가 내용 (장소 카드 등, JSON 객체)
  */
 @Entity(
     tableName = "messages",
@@ -38,4 +39,5 @@ data class MessageEntity(
     val localOrder: Long,
     val mediaJson: String = "[]",
     val localMediaJson: String? = null,
+    val payloadJson: String? = null,
 )

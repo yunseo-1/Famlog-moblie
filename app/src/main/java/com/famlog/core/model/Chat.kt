@@ -98,6 +98,8 @@ data class ChatMessage(
     val sendState: SendState,
     val media: List<ChatMedia> = emptyList(),
     val localMedia: List<LocalMedia> = emptyList(),
+    /** type=PLACE일 때 장소 카드 내용 (PLC-01). 형식이 맞지 않으면 null */
+    val place: PlaceCard? = null,
 ) {
     val isSystem: Boolean get() = type == MessageType.SYSTEM
     val isMedia: Boolean get() = type == MessageType.IMAGE || type == MessageType.VIDEO

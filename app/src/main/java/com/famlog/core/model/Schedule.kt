@@ -96,6 +96,8 @@ data class Schedule(
     val reminders: List<Reminder>,
     val createdBy: Long?,
     val version: Long,
+    /** 연결한 우리 그룹 장소. 장소가 지워지면 null */
+    val place: PlaceSummary? = null,
 ) {
     val repeat: Repeat? get() = Repeat.parse(rrule)
 }
@@ -112,6 +114,8 @@ data class ScheduleDraft(
     val rrule: String?,
     val memo: String?,
     val reminders: List<Reminder>,
+    /** 수정은 값 전체라 null이면 연결을 비운다 */
+    val placeId: Long? = null,
 )
 
 /** 겹치는 일정 (SCH-05). [userIds]는 물어본 구성원 중 그 일정 참여자 */

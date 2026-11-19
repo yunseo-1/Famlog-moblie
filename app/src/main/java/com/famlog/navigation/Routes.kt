@@ -54,3 +54,9 @@ enum class TopLevelDestination(
     ALBUM(AlbumRoute, R.string.tab_album, R.drawable.ic_tab_album, showsGroupSwitcher = true),
     STORY(StoryRoute, R.string.tab_story, R.drawable.ic_tab_story, showsGroupSwitcher = true),
 }
+
+/** SCR-32 장소 상세 (PLC-01·05). 채팅 장소 카드·일정 상세에서도 들어온다 */
+@Serializable data class PlaceDetailRoute(val placeId: Long)
+
+/** SCR-32 장소 검색·공유 (PLC-01) */
+@Serializable data object PlaceSearchRoute

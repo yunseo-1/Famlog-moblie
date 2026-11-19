@@ -32,6 +32,7 @@ import com.famlog.core.network.ReplyPreviewResponse
 import com.famlog.core.network.SendMessageRequest
 import com.famlog.core.network.parseServerTime
 import com.famlog.core.network.toModel
+import com.famlog.core.network.toPlaceCard
 import com.famlog.core.network.toReactions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -42,6 +43,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -372,6 +374,7 @@ class ChatRepository @Inject constructor(
         sendState = SendState.SENT.name,
         localOrder = 0,
         mediaJson = encode(MEDIA_SERIALIZER, media),
+        payloadJson = payload?.let { encode(JsonObject.serializer(), it) },
     )
 
     private fun MessageEntity.toModel() = ChatMessage(
@@ -391,6 +394,7 @@ class ChatRepository @Inject constructor(
         sendState = SendState.entries.firstOrNull { it.name == sendState } ?: SendState.SENT,
         media = decode(MEDIA_SERIALIZER, mediaJson).orEmpty().map { it.toModel() },
         localMedia = localMediaJson?.let { decode(LOCAL_MEDIA_SERIALIZER, it) }.orEmpty().map { it.toModel() },
+        place = if (type == MessageType.PLACE.name) payloadJson?.let { decode(JsonObject.serializer(), it) }?.toPlaceCard() else null,
     )
 
     private fun ChatMessage.toReplyJson(): String? {

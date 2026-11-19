@@ -86,6 +86,7 @@ import kotlinx.coroutines.launch
 fun ChatRoomScreen(
     onBack: () -> Unit,
     onOpenMedia: (groupId: Long, messageId: Long, index: Int) -> Unit,
+    onOpenPlace: (placeId: Long) -> Unit = {},
     viewModel: ChatRoomViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -126,6 +127,7 @@ fun ChatRoomScreen(
             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
         },
         onOpenMedia = { message, index -> message.id?.let { onOpenMedia(message.groupId, it, index) } },
+        onOpenPlace = onOpenPlace,
     )
 
     menuTarget?.let { target ->
@@ -158,6 +160,7 @@ fun ChatRoomContent(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onAttach: (() -> Unit)? = null,
     onOpenMedia: (ChatMessage, Int) -> Unit = { _, _ -> },
+    onOpenPlace: (Long) -> Unit = {},
 ) {
     val colors = FamTheme.colors
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -202,6 +205,7 @@ fun ChatRoomContent(
                             onLongPress = onLongPress,
                             onReactionClick = onReactionClick,
                             onOpenMedia = onOpenMedia,
+                            onOpenPlace = onOpenPlace,
                             modifier = Modifier.weight(1f),
                         )
                         state.replyTo?.let { reply ->
@@ -239,6 +243,7 @@ private fun MessageList(
     onLongPress: (ChatMessage) -> Unit,
     onReactionClick: (ChatMessage, ReactionEmoji) -> Unit,
     onOpenMedia: (ChatMessage, Int) -> Unit,
+    onOpenPlace: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -279,7 +284,7 @@ private fun MessageList(
         items(rows, key = { it.key }, contentType = { it::class }) { row ->
             when (row) {
                 is ChatRow.Date -> DateSeparator(formatDateSeparator(row.date, state.today))
-                is ChatRow.Message -> MessageRow(row, state, onLongPress, onReactionClick, onOpenMedia)
+                is ChatRow.Message -> MessageRow(row, state, onLongPress, onReactionClick, onOpenMedia, onOpenPlace)
             }
         }
         if (state.loadingOlder) {
@@ -299,6 +304,7 @@ private fun MessageRow(
     onLongPress: (ChatMessage) -> Unit,
     onReactionClick: (ChatMessage, ReactionEmoji) -> Unit,
     onOpenMedia: (ChatMessage, Int) -> Unit,
+    onOpenPlace: (Long) -> Unit,
 ) {
     val message = row.message
     when {
@@ -316,6 +322,7 @@ private fun MessageRow(
                 onReactionClick = { onReactionClick(message, it.emoji) },
                 mediaBaseUrl = state.mediaBaseUrl,
                 onOpenMedia = { onOpenMedia(message, it) },
+                onOpenPlace = onOpenPlace,
             )
             // 후보 카드가 들어올 자리 (S13). 서버가 CANDIDATE 메시지를 만들면 여기에 카드를 붙인다
             if (message.type == MessageType.CANDIDATE) CandidatePlaceholder()

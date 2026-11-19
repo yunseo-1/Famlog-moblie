@@ -48,7 +48,9 @@ import com.famlog.feature.group.GroupStartScreen
 import com.famlog.feature.group.GroupSwitcherSheet
 import com.famlog.feature.group.RoleSetupScreen
 import com.famlog.feature.group.shareInvite
+import com.famlog.feature.place.PlaceDetailScreen
 import com.famlog.feature.place.PlaceScreen
+import com.famlog.feature.place.PlaceSearchScreen
 import com.famlog.feature.story.StoryScreen
 
 @Composable
@@ -147,6 +149,7 @@ fun FamlogNavHost(
                     onOpenMedia = { groupId, messageId, index ->
                         navController.navigate(MediaViewerRoute(groupId, messageId, index))
                     },
+                    onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
                 )
             }
             composable<MediaViewerRoute> { MediaViewerScreen(onClose = { navController.popBackStack() }) }
@@ -160,6 +163,7 @@ fun FamlogNavHost(
                 ScheduleDetailScreen(
                     onBack = { navController.popBackStack() },
                     onEdit = { navController.navigate(ScheduleEditRoute(scheduleId = it)) },
+                    onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
                 )
             }
             composable<ScheduleEditRoute> { entry ->
@@ -178,7 +182,22 @@ fun FamlogNavHost(
                     },
                 )
             }
-            composable<PlaceRoute> { PlaceScreen() }
+            composable<PlaceRoute> {
+                PlaceScreen(
+                    onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
+                    onAddPlace = { navController.navigate(PlaceSearchRoute) },
+                )
+            }
+            composable<PlaceSearchRoute> {
+                PlaceSearchScreen(
+                    onBack = { navController.popBackStack() },
+                    // 공유했거나 이미 공유된 장소를 고르면 검색을 닫고 상세로
+                    onOpenPlace = { placeId ->
+                        navController.navigate(PlaceDetailRoute(placeId)) { popUpTo<PlaceSearchRoute> { inclusive = true } }
+                    },
+                )
+            }
+            composable<PlaceDetailRoute> { PlaceDetailScreen(onBack = { navController.popBackStack() }) }
             composable<AlbumRoute> { AlbumScreen() }
             composable<StoryRoute> { StoryScreen() }
         }

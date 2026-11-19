@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.famlog.R
 import com.famlog.core.data.GroupRepository
+import com.famlog.core.data.PlaceRepository
 import com.famlog.core.data.ScheduleRepository
 import com.famlog.core.designsystem.UiText
 import com.famlog.core.model.ApiError
@@ -12,6 +13,12 @@ import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.GroupDetail
 import com.famlog.core.model.GroupRole
 import com.famlog.core.model.Member
+import com.famlog.core.model.Place
+import com.famlog.core.model.PlaceCategory
+import com.famlog.core.model.PlaceFilter
+import com.famlog.core.model.PlaceMarks
+import com.famlog.core.model.PlacePage
+import com.famlog.core.model.PlaceSummary
 import com.famlog.core.model.Reminder
 import com.famlog.core.model.RepeatFreq
 import com.famlog.core.model.Schedule
@@ -62,7 +69,17 @@ class ScheduleEditViewModelTest {
         startDate = LocalDate.of(2026, 11, 21), endDate = LocalDate.of(2026, 11, 21),
         participantIds = listOf(DAD), rrule = "FREQ=WEEKLY;INTERVAL=2;COUNT=5", memo = "보험증",
         reminders = listOf(Reminder.MIN_30), createdBy = DAD, version = 3,
+        place = PlaceSummary(1, "해주냉면", "서울 송파구", PlaceCategory.RESTAURANT),
     )
+    private val cafe = Place(
+        id = 2, groupId = GROUP, kakaoPlaceId = "k2", name = "카페 온화", category = PlaceCategory.CAFE, categoryDetail = null,
+        address = "경기 수원시", region1 = "경기", region2 = "수원시 영통구", region3 = null, lat = 37.0, lng = 127.0,
+        phone = null, placeUrl = null, rating = null, oneLineReview = null, sharedBy = ME, marks = PlaceMarks(),
+        createdAt = Instant.parse("2026-11-01T00:00:00Z"),
+    )
+    private val places = mockk<PlaceRepository> {
+        coEvery { page(GROUP, PlaceFilter()) } returns ApiResult.Success(PlacePage(listOf(cafe), nextCursor = null))
+    }
 
     private val draft = slot<ScheduleDraft>()
     private val schedules = mockk<ScheduleRepository> {
@@ -73,11 +90,11 @@ class ScheduleEditViewModelTest {
 
 
     private fun newViewModel(date: String? = null) = ScheduleEditViewModel(
-        SavedStateHandle(mapOf("scheduleId" to 0L, "date" to date)), schedules, groups, FakeSessionStore(userId = ME), clock,
+        SavedStateHandle(mapOf("scheduleId" to 0L, "date" to date)), schedules, places, groups, FakeSessionStore(userId = ME), clock,
     )
 
     private fun editViewModel() = ScheduleEditViewModel(
-        SavedStateHandle(mapOf("scheduleId" to 7L)), schedules, groups, FakeSessionStore(userId = ME), clock,
+        SavedStateHandle(mapOf("scheduleId" to 7L)), schedules, places, groups, FakeSessionStore(userId = ME), clock,
     )
 
     @Test
@@ -208,6 +225,27 @@ class ScheduleEditViewModelTest {
 
         assertEquals("FREQ=WEEKLY;INTERVAL=2;COUNT=5", sent.captured.rrule)
         assertEquals(listOf(Reminder.MIN_30), sent.captured.reminders)
+        // PATCH는 값 전체라 장소를 빼면 연결이 비워진다 → 기존 장소를 다시 보낸다
+        assertEquals(1L, sent.captured.placeId)
+    }
+
+    @Test
+    fun 장소를_고르거나_빼면_저장에_반영된다() = runTest {
+        val sent = mutableListOf<ScheduleDraft>()
+        coEvery { schedules.update(existing, capture(sent)) } returns ApiResult.Success(existing)
+        val viewModel = editViewModel()
+        backgroundScope.launch(mainRule.dispatcher) { viewModel.uiState.collect {} }
+
+        viewModel.openPlacePicker()
+        assertEquals(listOf(2L), viewModel.uiState.value.placePicker?.places?.map { it.id })
+        viewModel.onPlaceChange(viewModel.uiState.value.placePicker!!.places.single())
+        assertNull(viewModel.uiState.value.placePicker)
+        viewModel.save()
+        assertEquals(2L, sent.last().placeId)
+
+        viewModel.onPlaceChange(null)
+        viewModel.save()
+        assertNull(sent.last().placeId)
     }
 
     @Test

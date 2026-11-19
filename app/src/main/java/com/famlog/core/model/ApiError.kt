@@ -22,4 +22,7 @@ object ErrorCodes {
 
     /** 수정하는 사이 다른 사람이 먼저 고쳤다 (일정·할 일 version) */
     const val VERSION_CONFLICT = "VERSION_CONFLICT"
+
+    /** 같은 그룹에 같은 장소가 이미 있다 (PLC-01) */
+    const val PLACE_ALREADY_SHARED = "PLACE_ALREADY_SHARED"
 }
