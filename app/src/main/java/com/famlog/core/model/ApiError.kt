@@ -1,10 +1,14 @@
 package com.famlog.core.model
 
-/** 서버 공통 에러 응답 { code, message, traceId } (사양서 11.1). message는 사용자에게 그대로 보여줄 수 있다 */
+/**
+ * 서버 공통 에러 응답 { code, message, traceId, fieldErrors } (사양서 11.1). message는 사용자에게 그대로 보여줄 수 있다.
+ * [fields]는 입력 오류가 난 항목 이름 (예: 후보 승인 422의 title·date·attendeeIds)
+ */
 data class ApiError(
     val code: String,
     val message: String,
     val traceId: String?,
+    val fields: List<String> = emptyList(),
 )
 
 /** 앱이 분기에 쓰는 에러 코드 (사양서 11.2, 백엔드 ErrorCode) */
@@ -31,4 +35,16 @@ object ErrorCodes {
 
     /** 위치기반서비스 동의 없이 내 주변을 불렀다 (PLC-04) */
     const val LOCATION_CONSENT_REQUIRED = "LOCATION_CONSENT_REQUIRED"
+
+    /** 후보: 다른 가족이 먼저 처리했다 (message 예: "엄마님이 먼저 등록했어요.") */
+    const val CANDIDATE_ALREADY_DECIDED = "CANDIDATE_ALREADY_DECIDED"
+
+    /** 후보: 일정 시각이 지났거나 7일이 지났다 */
+    const val CANDIDATE_EXPIRED = "CANDIDATE_EXPIRED"
+
+    /** 후보: 채울 항목이 있다 → 수정 시트 (fieldErrors) */
+    const val CANDIDATE_MISSING_FIELDS = "CANDIDATE_MISSING_FIELDS"
+
+    /** 후보: 승인한 사람·관리자가 아니거나 5분이 지났다 */
+    const val CANDIDATE_NOT_UNDOABLE = "CANDIDATE_NOT_UNDOABLE"
 }

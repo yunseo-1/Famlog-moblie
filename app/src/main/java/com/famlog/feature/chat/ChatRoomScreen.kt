@@ -71,10 +71,13 @@ import com.famlog.core.designsystem.component.FamTopBar
 import com.famlog.core.designsystem.component.GroupAvatar
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
+import com.famlog.core.model.Candidate
+import com.famlog.core.model.CandidateEntity
+import com.famlog.core.model.CandidateStatus
 import com.famlog.core.model.ChatMessage
+import com.famlog.core.model.DismissReason
 import com.famlog.core.model.GroupRole
 import com.famlog.core.model.Member
-import com.famlog.core.model.MessageType
 import com.famlog.core.model.ReactionEmoji
 import com.famlog.feature.group.shareInvite
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -87,14 +90,22 @@ fun ChatRoomScreen(
     onBack: () -> Unit,
     onOpenMedia: (groupId: Long, messageId: Long, index: Int) -> Unit,
     onOpenPlace: (placeId: Long) -> Unit = {},
+    onOpenSchedule: (scheduleId: Long) -> Unit = {},
     viewModel: ChatRoomViewModel = hiltViewModel(),
+    candidateViewModel: CandidateViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val candidates by candidateViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var scrollKey by remember { mutableStateOf<String?>(null) }
+    var resumedBefore by remember { mutableStateOf(false) }
 
     LifecycleResumeEffect(viewModel) {
         viewModel.setVisible(true)
+        // 다시 돌아왔으면 그동안 놓친 후보 처리 결과를 받는다 (처음은 CandidateViewModel이 받는다)
+        if (resumedBefore) candidateViewModel.refresh()
+        resumedBefore = true
         onPauseOrDispose { viewModel.setVisible(false) }
     }
     LaunchedEffect(viewModel) {
@@ -102,6 +113,20 @@ fun ChatRoomScreen(
             when (event) {
                 is ChatRoomEvent.Message -> snackbarHostState.showSnackbar(event.text.asString(context))
                 is ChatRoomEvent.ShareInvite -> context.shareInvite(event.groupName, event.code)
+                is ChatRoomEvent.ScrollTo -> scrollKey = event.key
+            }
+        }
+    }
+    LaunchedEffect(candidateViewModel) {
+        candidateViewModel.events.collect { event ->
+            when (event) {
+                is CandidateEvent.Message -> snackbarHostState.showSnackbar(event.text.asString(context))
+                is CandidateEvent.ShowEvidence -> viewModel.focus(event.seq, event.spans)
+                is CandidateEvent.OpenEntity -> when (event.type) {
+                    CandidateEntity.SCHEDULE -> onOpenSchedule(event.id)
+                    CandidateEntity.PLACE -> onOpenPlace(event.id)
+                    CandidateEntity.TODO -> Unit
+                }
             }
         }
     }
@@ -128,7 +153,48 @@ fun ChatRoomScreen(
         },
         onOpenMedia = { message, index -> message.id?.let { onOpenMedia(message.groupId, it, index) } },
         onOpenPlace = onOpenPlace,
+        candidates = candidates,
+        candidateActions = CandidateCardActions(
+            onApprove = candidateViewModel::approve,
+            onEdit = candidateViewModel::edit,
+            onDismiss = candidateViewModel::dismiss,
+            onUndo = candidateViewModel::undo,
+            onOpen = candidateViewModel::openEntity,
+            onShowEvidence = candidateViewModel::showEvidence,
+        ),
+        scrollKey = scrollKey,
+        onScrolled = { scrollKey = null },
     )
+
+    candidates.sheet?.let { sheet ->
+        CandidateSheetDialog(
+            sheet = sheet,
+            members = candidates.members,
+            today = candidates.today,
+            actions = CandidateSheetActions(
+                onDismiss = candidateViewModel::closeSheet,
+                onSubmit = candidateViewModel::submitSheet,
+                onShowEvidence = { evidence ->
+                    candidateViewModel.closeSheet()
+                    candidateViewModel.showEvidence(evidence)
+                },
+                onTitleChange = candidateViewModel::onTitleChange,
+                onDateChange = candidateViewModel::onDateChange,
+                onClearDueDate = candidateViewModel::clearDueDate,
+                onAllDayChange = candidateViewModel::onAllDayChange,
+                onStartTimeChange = candidateViewModel::onStartTimeChange,
+                onEndTimeChange = candidateViewModel::onEndTimeChange,
+                onToggleParticipant = candidateViewModel::toggleParticipant,
+                onLocationChange = candidateViewModel::onLocationChange,
+                onAssigneeChange = candidateViewModel::onAssigneeChange,
+                onPlaceSelect = candidateViewModel::onPlaceSelect,
+                onCategoryChange = candidateViewModel::onCategoryChange,
+                onReviewChange = candidateViewModel::onReviewChange,
+                onQueryChange = candidateViewModel::onQueryChange,
+                onSearch = candidateViewModel::searchPlace,
+            ),
+        )
+    }
 
     menuTarget?.let { target ->
         MessageMenuSheet(
@@ -161,6 +227,10 @@ fun ChatRoomContent(
     onAttach: (() -> Unit)? = null,
     onOpenMedia: (ChatMessage, Int) -> Unit = { _, _ -> },
     onOpenPlace: (Long) -> Unit = {},
+    candidates: CandidateUiState = CandidateUiState(),
+    candidateActions: CandidateCardActions = CandidateCardActions(),
+    scrollKey: String? = null,
+    onScrolled: () -> Unit = {},
 ) {
     val colors = FamTheme.colors
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -206,6 +276,10 @@ fun ChatRoomContent(
                             onReactionClick = onReactionClick,
                             onOpenMedia = onOpenMedia,
                             onOpenPlace = onOpenPlace,
+                            candidates = candidates,
+                            candidateActions = candidateActions,
+                            scrollKey = scrollKey,
+                            onScrolled = onScrolled,
                             modifier = Modifier.weight(1f),
                         )
                         state.replyTo?.let { reply ->
@@ -244,10 +318,22 @@ private fun MessageList(
     onReactionClick: (ChatMessage, ReactionEmoji) -> Unit,
     onOpenMedia: (ChatMessage, Int) -> Unit,
     onOpenPlace: (Long) -> Unit,
+    candidates: CandidateUiState,
+    candidateActions: CandidateCardActions,
+    scrollKey: String?,
+    onScrolled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val rows = remember(state.rows) { state.rows.asReversed() }
+
+    // 원문 보기: 근거 메시지가 화면 가운데쯤 오게 옮긴다
+    LaunchedEffect(scrollKey) {
+        val key = scrollKey ?: return@LaunchedEffect
+        val index = rows.indexOfFirst { it.key == key }
+        if (index >= 0) listState.animateScrollToItem(index, scrollOffset = -listState.layoutInfo.viewportSize.height / 3)
+        onScrolled()
+    }
 
     val nearTop by remember {
         derivedStateOf {
@@ -284,7 +370,9 @@ private fun MessageList(
         items(rows, key = { it.key }, contentType = { it::class }) { row ->
             when (row) {
                 is ChatRow.Date -> DateSeparator(formatDateSeparator(row.date, state.today))
-                is ChatRow.Message -> MessageRow(row, state, onLongPress, onReactionClick, onOpenMedia, onOpenPlace)
+                is ChatRow.Message -> MessageRow(
+                    row, state, onLongPress, onReactionClick, onOpenMedia, onOpenPlace, candidates, candidateActions,
+                )
             }
         }
         if (state.loadingOlder) {
@@ -305,6 +393,8 @@ private fun MessageRow(
     onReactionClick: (ChatMessage, ReactionEmoji) -> Unit,
     onOpenMedia: (ChatMessage, Int) -> Unit,
     onOpenPlace: (Long) -> Unit,
+    candidates: CandidateUiState,
+    candidateActions: CandidateCardActions,
 ) {
     val message = row.message
     when {
@@ -323,10 +413,49 @@ private fun MessageRow(
                 mediaBaseUrl = state.mediaBaseUrl,
                 onOpenMedia = { onOpenMedia(message, it) },
                 onOpenPlace = onOpenPlace,
+                highlights = message.id?.let { state.highlights[it] }.orEmpty(),
             )
-            // 후보 카드가 들어올 자리 (S13). 서버가 CANDIDATE 메시지를 만들면 여기에 카드를 붙인다
-            if (message.type == MessageType.CANDIDATE) CandidatePlaceholder()
+            // 이 메시지가 마지막 근거인 후보: 대기 중이면 카드, 승인됐으면 Resolved Chip (ARC-05)
+            message.id?.let { candidates.byAnchor[it] }?.forEach { candidate ->
+                CandidateItem(candidate, message, candidates, candidateActions)
+            }
         }
+    }
+}
+
+/** 카드·칩 동작 */
+data class CandidateCardActions(
+    val onApprove: (Candidate) -> Unit = {},
+    val onEdit: (Candidate) -> Unit = {},
+    val onDismiss: (Candidate, DismissReason?) -> Unit = { _, _ -> },
+    val onUndo: (Candidate) -> Unit = {},
+    val onOpen: (Candidate) -> Unit = {},
+    val onShowEvidence: (Candidate) -> Unit = {},
+)
+
+@Composable
+private fun CandidateItem(candidate: Candidate, anchor: ChatMessage, candidates: CandidateUiState, actions: CandidateCardActions) {
+    val busy = candidate.id in candidates.busy
+    if (candidate.status == CandidateStatus.APPROVED) {
+        ResolvedChip(
+            candidate = candidate,
+            deciderName = candidates.nameOf(candidate.decidedBy),
+            canUndo = candidate.id in candidates.undoable,
+            busy = busy,
+            onOpen = { actions.onOpen(candidate) },
+            onUndo = { actions.onUndo(candidate) },
+        )
+    } else {
+        CandidateCard(
+            candidate = candidate,
+            anchor = anchor,
+            members = candidates.members,
+            busy = busy,
+            onApprove = { actions.onApprove(candidate) },
+            onEdit = { actions.onEdit(candidate) },
+            onDismiss = { actions.onDismiss(candidate, it) },
+            onShowEvidence = { actions.onShowEvidence(candidate) },
+        )
     }
 }
 

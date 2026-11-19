@@ -24,7 +24,11 @@ data class ErrorResponse(
     val code: String,
     val message: String,
     val traceId: String? = null,
+    val fieldErrors: List<FieldErrorResponse> = emptyList(),
 )
+
+@Serializable
+data class FieldErrorResponse(val field: String, val reason: String? = null)
 
 @Serializable
 data class DeviceRequest(

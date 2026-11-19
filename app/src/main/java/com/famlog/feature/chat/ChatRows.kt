@@ -23,8 +23,12 @@ sealed interface ChatRow {
     }
 }
 
-/** seq 오름차순 메시지를 화면 줄로 바꾼다. 날짜·분은 [zone](서울) 기준 */
-fun buildChatRows(messages: List<ChatMessage>, zone: ZoneId): List<ChatRow> {
+/**
+ * seq 오름차순 메시지를 화면 줄로 바꾼다. 날짜·분은 [zone](서울) 기준.
+ * 지운 시스템 메시지(후보 승인을 되돌린 "등록했어요")는 "삭제된 메시지"로 남기지 않고 뺀다.
+ */
+fun buildChatRows(all: List<ChatMessage>, zone: ZoneId): List<ChatRow> {
+    val messages = all.filterNot { it.isSystem && it.deleted }
     val rows = ArrayList<ChatRow>(messages.size + 8)
     messages.forEachIndexed { index, message ->
         val previous = messages.getOrNull(index - 1)

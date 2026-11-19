@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -36,6 +37,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -102,6 +106,7 @@ fun ChatBubble(
     mediaBaseUrl: String = "",
     onOpenMedia: (index: Int) -> Unit = {},
     onOpenPlace: (placeId: Long) -> Unit = {},
+    highlights: List<String> = emptyList(),
 ) {
     val colors = FamTheme.colors
     val unknownName = stringResource(R.string.chat_unknown_member)
@@ -154,7 +159,7 @@ fun ChatBubble(
                         .widthIn(max = FamDimens.bubbleMaxTextWidth),
                 ) {
                     message.replyTo?.takeIf { !message.deleted }?.let { ReplyQuote(it, replyName) }
-                    MessageBody(message)
+                    MessageBody(message, highlights)
                 }
                 if (!mine) MessageMeta(message, showTime, alignEnd = false)
             }
@@ -166,7 +171,7 @@ fun ChatBubble(
 }
 
 @Composable
-private fun MessageBody(message: ChatMessage) {
+private fun MessageBody(message: ChatMessage, highlights: List<String>) {
     val colors = FamTheme.colors
     val (text, muted) = when {
         message.deleted -> stringResource(R.string.chat_message_deleted) to true
@@ -174,11 +179,23 @@ private fun MessageBody(message: ChatMessage) {
         else -> stringResource(R.string.chat_message_unsupported) to true
     }
     Text(
-        text = text,
+        text = if (muted || highlights.isEmpty()) AnnotatedString(text) else highlight(text, highlights, colors.textHighlight),
         style = FamTheme.type.bodyMedium,
         color = if (muted) colors.textTertiary else colors.textPrimary,
         fontStyle = if (message.deleted) FontStyle.Italic else null,
     )
+}
+
+/** 원문 보기: 추출 부분([spans])마다 배경을 칠한다. 원문에 없는 부분은 건너뛴다 */
+internal fun highlight(text: String, spans: List<String>, color: Color): AnnotatedString = buildAnnotatedString {
+    append(text)
+    spans.filter { it.isNotBlank() }.forEach { span ->
+        var from = text.indexOf(span)
+        while (from >= 0) {
+            addStyle(SpanStyle(background = color), from, from + span.length)
+            from = text.indexOf(span, from + span.length)
+        }
+    }
 }
 
 /** 답장 원문: 왼쪽 막대 + 보낸 사람 + 본문 1줄. 들어오기 전 메시지면 "이전 메시지" */
@@ -281,22 +298,6 @@ private fun ReactionRow(
             )
         }
     }
-}
-
-/** 후보 카드 자리 (S13에서 CandidateCard로 바꾼다). 왼쪽 들여쓰기 40 */
-@Composable
-fun CandidatePlaceholder(modifier: Modifier = Modifier) {
-    val colors = FamTheme.colors
-    Text(
-        text = stringResource(R.string.chat_candidate_placeholder),
-        style = FamTheme.type.caption,
-        color = colors.textTertiary,
-        modifier = modifier
-            .padding(start = FamDimens.chatIndent)
-            .widthIn(max = FamDimens.candidateCardWidth)
-            .border(1.dp, colors.borderDefault, RoundedCornerShape(FamDimens.radiusLg))
-            .padding(FamDimens.lg),
-    )
 }
 
 /** 답장 중 표시줄: "엄마에게 답장" + 원문 1줄 + [취소] */
