@@ -235,7 +235,28 @@
 - 실기 확인(2026-11-19, 에뮬레이터 + 로컬 서버 main 3ebee79): 해주냉면 카드·상세·다녀옴(DB place_marks), 실제 카카오 검색 "CGV" → 공유(places id 2, 채팅 seq 24 PLACE),
   수정(ETC·별점 지움 → DB null), "서울 > 송파구 + 윤서" 1곳 / "+ E2E엄마" 0곳, 일정에 장소 연결 → 제목만 고쳐도 place_id 유지, 장소 삭제 → 일정 place_id null·카드 탭 시 "삭제된 장소".
 - 남은 확인: 인수 기준(아빠 송파 2·강남 1)은 공유자가 한 명뿐이라 단위·UI 테스트로만 확인. "공유됨" 표시는 adb로 한글 입력이 안 돼 실기 미확인(단위 테스트로 확인).
-- 미룬 것(S15-2): 지도 [지도|리스트], 내 주변(위치 동의 API — 백엔드 PR #16 머지됨, 403 LOCATION_CONSENT_REQUIRED), 별칭 장소(PLC-06).
+- 미룬 것(S15-2에서 함): 지도 [지도|리스트], 내 주변(위치 동의 API — 백엔드 PR #16 머지됨, 403 LOCATION_CONSENT_REQUIRED), 별칭 장소(PLC-06).
+
+### S15-2 메모 (지도·내 주변·별칭)
+
+- 사용자 결정: 장소 탭은 [지도 | 리스트]이고 처음은 지도. 별칭은 리스트 위 "우리 가족 별칭 N개 ›" 줄 → 별칭 화면. 위치 동의는 앱 안 동의 + 서버 기록(백엔드 PR #16).
+- 카카오 지도 SDK `com.kakao.maps.open:android` 2.15.2 (arm64-v8a·armeabi-v7a만, 16KB 정렬 확인). 로그인과 같은 네이티브 키, 카카오 콘솔에서 **카카오맵 사용 설정** 필요.
+  키가 비면(CI) 지도 대신 안내 문구. 릴리스는 R8 `optimization.packageScope`가 androidx·kotlin만이라 keep 규칙이 필요 없다.
+- 지도(`KakaoMapView`): AndroidView + 화면 수명에 맞춘 resume·pause·finish. 핀 = category/place 알약 비트맵(`setApplyDpScale(false)` — 안 하면 SDK가 한 번 더 키움),
+  내 위치 = 파란 점. 카메라 이동이 멈추면 300ms 뒤 화면 영역(sw·ne)으로 목록을 받는다. 지도는 스크롤 밖에 둬서 제스처가 목록에 먹히지 않게 했다.
+- **SDK 로그**: 카메라 좌표(`newCenterPoint(lat, lng)`, `getMapPoint`)와 인증 헤더를 logcat에 찍는다 → `MapLogger`로 끈다(Java 플래그는 FamlogApp, 네이티브 스위치는 MapView 생성 전).
+  좌표 로그는 0건 확인. 엔진 시작 때 인증 요청 줄 1개(앱 키, APK에 들어 있는 공개 값)는 스위치보다 먼저 찍혀 끌 수 없다.
+- 내 주변: [내 주변] → 서버 동의 GET → (미동의·재동의 필요면 약관 창, 서버 currentVersion으로 PUT) → ACCESS_COARSE_LOCATION → 현재 위치 1회(`AndroidLocationSource`, 10초) → nearby 3km.
+  404면 버튼 숨김, 403 LOCATION_CONSENT_REQUIRED면 약관 다시, 400(약관 바뀜)이면 새 버전으로 다시 묻는다. 좌표는 메모리에만(`Coordinates.toString` 숨김), 디버그 HTTP 로그는 쿼리를 가린다.
+  약관 전문은 S22(요약 + 버전만 표시). 동의 철회 UI는 S20 설정(`ConsentRepository.withdrawLocation` 준비됨).
+- 별칭: 가나다 목록, 추가 시트(별칭 30자 + 우리 장소 고르기 + 주소 글 200자), 409면 입력칸 오류, 삭제는 만든 사람·관리자 이상. 장소 고르기 시트(`PlacePickerSheet`)는 일정 폼과 함께 쓴다.
+- `FamSegmented`를 디자인 시스템으로 올려 캘린더 [일정|할 일]도 같이 쓴다.
+- 실기 확인(2026-11-19, 로컬 서버 main 69dde7b): 지도 타일·핀, 지도 이동 → "화면 안 0곳", 별칭 추가(place_id 1)·중복 409·삭제,
+  내 주변: 약관 창(1.0) → consents 새 줄 → 대략적 위치 권한 창 → 송파구청 위치 파란 점·카메라 이동·해주냉면 2.2km, location_access_logs NEARBY 기록(좌표 없음).
+- 에뮬레이터 위치 바꾸기: `adb emu geo fix`는 이 이미지(API 37)에서 반영되지 않았다. 대신
+  `adb shell appops set com.android.shell android:mock_location allow` 후 `cmd location providers add-test-provider fused` / `set-test-provider-enabled fused true` /
+  `set-test-provider-location fused --location 37.5110,127.1015` (getCurrentLocation 대기 중에 한 번 더 보내야 응답한다).
+- 남은 확인: 릴리스 빌드에서 지도 실행(서명 S22 전이라 설치 못 함), 실제 폰에서 대략적 위치 정확도.
 
 ## 7. 오픈 이슈
 
@@ -260,3 +281,4 @@
 | 2026-11-18 | S13-1 | 캘린더 탭(월·목록, 구성원 필터, 공휴일), 일정 등록·수정·상세·삭제, 반복·알림·겹침 안내, 일정 리마인드 푸시 | feat(SCH-01) |
 | 2026-11-18 | S13-2 | 캘린더 탭 [할 일]: 목록·담당자 필터·완료 체크(채팅방 알림)·추가·수정·삭제 | feat(TODO-01) |
 | 2026-11-19 | S15-1 | 장소 탭 목록(지역·공유한 사람·카테고리 필터), 검색·공유, 상세(다녀옴·가고 싶어요·수정·삭제), 채팅 장소 카드, 일정 장소 연결 | feat(PLC-01) |
+| 2026-11-19 | S15-2 | 장소 탭 [지도·리스트]: 카카오 지도·화면 영역 핀, 내 주변(위치 약관 동의·대략적 위치), 별칭 장소, FamSegmented | feat(PLC-04) |

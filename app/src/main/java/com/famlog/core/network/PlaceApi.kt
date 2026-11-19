@@ -1,6 +1,8 @@
 package com.famlog.core.network
 
+import com.famlog.core.model.NearbyPlace
 import com.famlog.core.model.Place
+import com.famlog.core.model.PlaceAlias
 import com.famlog.core.model.PlaceCard
 import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.PlaceEdit
@@ -62,6 +64,11 @@ interface PlaceApi {
         @Query("category") category: List<String>,
         @Query("cursor") cursor: String? = null,
         @Query("size") size: Int? = null,
+        /** 지도 영역은 4개를 모두 보내야 한다 (일부만 400) */
+        @Query("swLat") swLat: Double? = null,
+        @Query("swLng") swLng: Double? = null,
+        @Query("neLat") neLat: Double? = null,
+        @Query("neLng") neLng: Double? = null,
     ): PlaceListResponse
 
     /** 지역별 개수(배지). 지역 필터는 받지 않는다 */
@@ -71,6 +78,30 @@ interface PlaceApi {
         @Query("sharedBy") sharedBy: List<Long>,
         @Query("category") category: List<String>,
     ): RegionCountResponse
+
+    /**
+     * 내 주변 (PLC-04). 가까운 순 최대 50. 좌표는 서버도 저장하지 않는다.
+     * 기능 플래그가 꺼지면 404, 위치 동의가 없으면 403 LOCATION_CONSENT_REQUIRED.
+     */
+    @GET("groups/{groupId}/places/nearby")
+    suspend fun nearby(
+        @Path("groupId") groupId: Long,
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radiusKm") radiusKm: Int,
+    ): NearbyListResponse
+
+    /** 별칭 장소 (PLC-06). 가나다 순 */
+    @GET("groups/{groupId}/place-aliases")
+    suspend fun aliases(@Path("groupId") groupId: Long): AliasListResponse
+
+    /** 같은 별칭이 있으면 409 ALIAS_DUPLICATED, placeId가 우리 그룹 장소가 아니면 400 */
+    @POST("groups/{groupId}/place-aliases")
+    suspend fun createAlias(@Path("groupId") groupId: Long, @Body body: CreateAliasRequest): AliasResponse
+
+    /** 만든 사람 또는 관리자 이상 */
+    @DELETE("groups/{groupId}/place-aliases/{aliasId}")
+    suspend fun deleteAlias(@Path("groupId") groupId: Long, @Path("aliasId") aliasId: Long)
 
     @GET("places/{placeId}")
     suspend fun detail(@Path("placeId") placeId: Long): PlaceResponse
@@ -159,6 +190,27 @@ data class Region1CountResponse(val region1: String, val count: Long, val childr
 data class RegionCountResponse(val total: Long, val items: List<Region1CountResponse>)
 
 @Serializable
+data class NearbyPlaceResponse(val place: PlaceResponse, val distanceM: Int)
+
+@Serializable
+data class NearbyListResponse(val items: List<NearbyPlaceResponse>)
+
+@Serializable
+data class CreateAliasRequest(val alias: String, val placeId: Long? = null, val addressText: String? = null)
+
+@Serializable
+data class AliasResponse(
+    val id: Long,
+    val alias: String,
+    val place: PlaceSummaryResponse? = null,
+    val addressText: String? = null,
+    val createdBy: Long? = null,
+)
+
+@Serializable
+data class AliasListResponse(val items: List<AliasResponse>)
+
+@Serializable
 data class PlaceSummaryResponse(val id: Long, val name: String, val address: String? = null, val category: String? = null)
 
 fun SearchItemResponse.toModel() = PlaceSearchItem(
@@ -207,6 +259,10 @@ fun RegionCountResponse.toModel() = RegionCounts(
 )
 
 fun PlaceSummaryResponse.toModel() = PlaceSummary(id, name, address, PlaceCategory.of(category))
+
+fun NearbyPlaceResponse.toModel() = NearbyPlace(place.toModel(), distanceM)
+
+fun AliasResponse.toModel() = PlaceAlias(id, alias, place?.toModel(), addressText, createdBy)
 
 /** 카테고리·별점·한줄평 전체를 보낸다 (지운 별점·한줄평은 null) */
 fun PlaceEdit.toPatch(): JsonObject = buildJsonObject {

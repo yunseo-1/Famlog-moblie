@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.famlog.R
 import com.famlog.core.designsystem.component.FamChip
+import com.famlog.core.designsystem.component.FamSegmented
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
 import com.famlog.core.model.Holiday
@@ -105,8 +106,10 @@ fun CalendarContent(
 ) {
     Box(modifier = modifier.fillMaxSize().background(FamTheme.colors.bgDefault)) {
         Column(Modifier.fillMaxSize()) {
-            Segmented(
+            FamSegmented(
+                options = CalendarTab.entries,
                 selected = state.tab,
+                label = { stringResource(if (it == CalendarTab.SCHEDULE) R.string.calendar_tab_schedule else R.string.calendar_tab_todo) },
                 onSelect = onSelectTab,
                 modifier = Modifier.padding(horizontal = FamDimens.screenPadding, vertical = FamDimens.sm),
             )
@@ -134,36 +137,6 @@ fun CalendarContent(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(FamDimens.lg),
             ) {
                 Icon(painterResource(R.drawable.ic_plus), contentDescription = stringResource(R.string.calendar_add_schedule))
-            }
-        }
-    }
-}
-
-/** Figma Segmented: bg surface/muted, radius full, padding 4. 선택 칸 bg/default + Body/Medium Strong */
-@Composable
-private fun Segmented(selected: CalendarTab, onSelect: (CalendarTab) -> Unit, modifier: Modifier = Modifier) {
-    val colors = FamTheme.colors
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(colors.surfaceMuted, CircleShape)
-            .padding(4.dp),
-    ) {
-        CalendarTab.entries.forEach { tab ->
-            val isSelected = tab == selected
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp)
-                    .background(if (isSelected) colors.bgDefault else colors.surfaceMuted, CircleShape)
-                    .selectable(selected = isSelected, role = Role.Tab, onClick = { onSelect(tab) }),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(if (tab == CalendarTab.SCHEDULE) R.string.calendar_tab_schedule else R.string.calendar_tab_todo),
-                    style = if (isSelected) FamTheme.type.bodyMediumStrong else FamTheme.type.bodyMedium,
-                    color = if (isSelected) colors.textPrimary else colors.textTertiary,
-                )
             }
         }
     }

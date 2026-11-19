@@ -60,3 +60,6 @@ enum class TopLevelDestination(
 
 /** SCR-32 장소 검색·공유 (PLC-01) */
 @Serializable data object PlaceSearchRoute
+
+/** 별칭 장소 (PLC-06) */
+@Serializable data object PlaceAliasRoute

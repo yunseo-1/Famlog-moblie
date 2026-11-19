@@ -16,6 +16,8 @@ import com.famlog.core.data.ChatSync
 import com.famlog.core.data.PushTokenRepository
 import com.famlog.core.push.PushNotifier
 import com.kakao.sdk.common.KakaoSdk
+import com.kakao.vectormap.KakaoMapSdk
+import com.kakao.vectormap.MapLogger
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.OkHttpClient
 import javax.inject.Inject
@@ -44,6 +46,10 @@ class FamlogApp : Application(), Configuration.Provider, SingletonImageLoader.Fa
         super.onCreate()
         if (BuildConfig.KAKAO_NATIVE_APP_KEY.isNotBlank()) {
             KakaoSdk.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)
+            // 지도도 같은 네이티브 앱 키 (카카오 콘솔에서 카카오맵 사용 설정 필요)
+            KakaoMapSdk.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)
+            // 지도 SDK 로그에는 인증 헤더·카메라 좌표가 찍힌다 → 끈다 (네이티브 쪽은 KakaoMapView에서)
+            MapLogger.ENABLE = false
         }
         pushNotifier.createChannels()
         // 실시간 채팅은 앱이 화면에 보이는 동안만 연결한다. 백그라운드 알림은 FCM(S11)

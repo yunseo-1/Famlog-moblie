@@ -7,6 +7,7 @@ import com.famlog.core.model.GroupDetail
 import com.famlog.core.model.GroupRole
 import com.famlog.core.model.Member
 import com.famlog.core.model.Place
+import com.famlog.core.model.PlaceAlias
 import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.PlaceFilter
 import com.famlog.core.model.PlaceMarks
@@ -59,11 +60,13 @@ class PlaceListViewModelTest {
         total = 3,
         items = listOf(RegionCount("서울", 3, listOf(SubRegionCount("강남구", 1), SubRegionCount("송파구", 2)))),
     )
+    private val alias = PlaceAlias(1, "할머니 댁", null, "경기 수원시", ME)
     private val changes = MutableSharedFlow<Long>(extraBufferCapacity = 1)
     private val places = mockk<PlaceRepository> {
         every { changes } returns this@PlaceListViewModelTest.changes
         coEvery { page(any(), any(), any()) } returns ApiResult.Success(PlacePage(listOf(songpa1, songpa2, gangnam), null))
         coEvery { regions(any(), any()) } returns ApiResult.Success(counts)
+        coEvery { aliases(any()) } returns ApiResult.Success(listOf(alias))
     }
 
     private fun viewModel() = PlaceListViewModel(places, groups, clock)
@@ -155,6 +158,14 @@ class PlaceListViewModelTest {
         coEvery { places.page(GROUP, PlaceFilter(), null) } returns ApiResult.NetworkError
         viewModel.refresh()
         assertTrue(viewModel.uiState.value.loadFailed)
+    }
+
+    @Test
+    fun 별칭_수를_받아_리스트_위에_보인다() = runTest {
+        val viewModel = viewModel()
+        backgroundScope.launch(mainRule.dispatcher) { viewModel.uiState.collect {} }
+
+        assertEquals(1, viewModel.uiState.value.aliasCount)
     }
 
     @Test

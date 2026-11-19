@@ -48,12 +48,42 @@ data class Place(
 /** 장소 목록 한 페이지. [nextCursor]가 있으면 더 있다 */
 data class PlacePage(val items: List<Place>, val nextCursor: String?)
 
-/** 장소 목록 필터 (PLC-02·03). 모두 함께 쓴다. [region2]는 [region1]이 있을 때만 */
+/**
+ * 장소 목록 필터 (PLC-02·03·04). 모두 함께 쓴다. [region2]는 [region1]이 있을 때만.
+ * [bounds]는 지도 화면 영역 (지도 탭에서만)
+ */
 data class PlaceFilter(
     val region1: String? = null,
     val region2: String? = null,
     val sharedBy: Set<Long> = emptySet(),
     val categories: Set<PlaceCategory> = emptySet(),
+    val bounds: MapBounds? = null,
+)
+
+/** 지도 화면 영역 (남서·북동 꼭짓점) */
+data class MapBounds(val swLat: Double, val swLng: Double, val neLat: Double, val neLng: Double)
+
+/**
+ * 위도·경도. 내 위치일 때는 요청 처리에만 쓰고 저장·로그에 남기지 않는다 (사양서 8.6).
+ * toString은 값을 숨긴다.
+ */
+data class Coordinates(val lat: Double, val lng: Double) {
+    override fun toString(): String = "Coordinates(…)"
+}
+
+/** 내 주변 장소 하나와 거리 (PLC-04) */
+data class NearbyPlace(val place: Place, val distanceM: Int)
+
+/**
+ * 그룹 별칭 장소 (PLC-06). "할머니 댁"처럼 검색이 안 되는 곳. 우리 그룹 장소([place])에 연결하거나
+ * 주소 글([addressText])만 남길 수 있다. 연결한 장소가 지워지면 [place]는 null.
+ */
+data class PlaceAlias(
+    val id: Long,
+    val alias: String,
+    val place: PlaceSummary?,
+    val addressText: String?,
+    val createdBy: Long?,
 )
 
 /** 카카오 검색 결과 하나. [sharedPlaceId]가 있으면 이미 우리 그룹에 공유된 장소 */

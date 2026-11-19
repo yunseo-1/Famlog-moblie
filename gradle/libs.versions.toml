@@ -22,6 +22,8 @@ exifinterface = "1.4.1"
 mockk = "1.14.7"
 turbine = "1.2.1"
 kakaoSdk = "2.26.0"
+# 16KB 페이지 정렬 확인함 (arm64-v8a·armeabi-v7a만 제공)
+kakaoMap = "2.15.2"
 credentials = "1.6.0"
 googleId = "1.1.1"
 room = "2.8.4"
@@ -62,6 +64,7 @@ androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterfa
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 kakao-sdk-user = { group = "com.kakao.sdk", name = "v2-user", version.ref = "kakaoSdk" }
+kakao-map = { group = "com.kakao.maps.open", name = "android", version.ref = "kakaoMap" }
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

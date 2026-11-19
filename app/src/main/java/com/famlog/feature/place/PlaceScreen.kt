@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.famlog.R
 import com.famlog.core.designsystem.component.FamChip
+import com.famlog.core.designsystem.component.FamSegmented
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
 import com.famlog.core.model.Place
@@ -60,12 +61,50 @@ import com.famlog.core.model.PlaceFilter
 import com.famlog.core.model.RegionCounts
 import com.famlog.feature.calendar.memberColor
 
-/** SCR-31 장소 탭 (PLC-02·03). 지도는 S15-2에서 [지도|리스트]로 붙인다 */
+/** 장소 탭 [지도 | 리스트]. 처음에는 지도 (사용자 결정, Figma 04) */
+enum class PlaceTab { MAP, LIST }
+
+/** SCR-30·31 장소 탭 (PLC-02·03·04·06). 공유 버튼(FAB)은 두 탭이 같이 쓴다 */
 @Composable
 fun PlaceScreen(
     onOpenPlace: (Long) -> Unit,
     onAddPlace: () -> Unit,
+    onOpenAliases: () -> Unit,
     modifier: Modifier = Modifier,
+) {
+    val colors = FamTheme.colors
+    var tab by rememberSaveable { mutableStateOf(PlaceTab.MAP) }
+    Box(modifier.fillMaxSize().background(colors.bgDefault)) {
+        Column(Modifier.fillMaxSize()) {
+            FamSegmented(
+                options = PlaceTab.entries,
+                selected = tab,
+                label = { stringResource(if (it == PlaceTab.MAP) R.string.place_tab_map else R.string.place_tab_list) },
+                onSelect = { tab = it },
+                modifier = Modifier.padding(horizontal = FamDimens.screenPadding, vertical = FamDimens.sm),
+            )
+            when (tab) {
+                PlaceTab.MAP -> PlaceMapTab(onOpenPlace = onOpenPlace)
+                PlaceTab.LIST -> PlaceListTab(onOpenPlace = onOpenPlace, onOpenAliases = onOpenAliases)
+            }
+        }
+        FloatingActionButton(
+            onClick = onAddPlace,
+            containerColor = colors.brandPrimary,
+            contentColor = colors.textOnBrand,
+            shape = CircleShape,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(FamDimens.lg),
+        ) {
+            Icon(painterResource(R.drawable.ic_plus), contentDescription = stringResource(R.string.place_add))
+        }
+    }
+}
+
+/** SCR-31 [리스트] */
+@Composable
+private fun PlaceListTab(
+    onOpenPlace: (Long) -> Unit,
+    onOpenAliases: () -> Unit,
     viewModel: PlaceListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -83,8 +122,7 @@ fun PlaceScreen(
         onLoadMore = viewModel::loadMore,
         onRetry = viewModel::refresh,
         onOpenPlace = onOpenPlace,
-        onAddPlace = onAddPlace,
-        modifier = modifier,
+        onOpenAliases = onOpenAliases,
     )
 }
 
@@ -99,7 +137,7 @@ fun PlaceListContent(
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
     onOpenPlace: (Long) -> Unit,
-    onAddPlace: () -> Unit,
+    onOpenAliases: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = FamTheme.colors
@@ -123,6 +161,9 @@ fun PlaceListContent(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = FamDimens.fabSize + FamDimens.xxxl),
         ) {
+            item(key = "aliases") {
+                AliasEntry(count = state.aliasCount, onClick = onOpenAliases)
+            }
             item(key = "region") {
                 RegionButton(
                     label = regionLabel,
@@ -222,15 +263,6 @@ fun PlaceListContent(
                 }
             }
         }
-        FloatingActionButton(
-            onClick = onAddPlace,
-            containerColor = colors.brandPrimary,
-            contentColor = colors.textOnBrand,
-            shape = CircleShape,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(FamDimens.lg),
-        ) {
-            Icon(painterResource(R.drawable.ic_plus), contentDescription = stringResource(R.string.place_add))
-        }
     }
 
     if (regionSheet) {
@@ -263,6 +295,35 @@ internal fun RegionCounts.countOf(filter: PlaceFilter): Long? {
     val region = items.firstOrNull { it.region1 == region1 } ?: return 0
     val region2 = filter.region2 ?: return region.count
     return region.children.firstOrNull { it.region2 == region2 }?.count ?: 0
+}
+
+/** "우리 가족 별칭 N개 ›" → 별칭 화면 (PLC-06) */
+@Composable
+private fun AliasEntry(count: Int?, onClick: () -> Unit) {
+    val colors = FamTheme.colors
+    Row(
+        modifier = Modifier
+            .padding(horizontal = FamDimens.screenPadding, vertical = FamDimens.xs)
+            .fillMaxWidth()
+            .background(colors.categoryPlaceBg, RoundedCornerShape(FamDimens.radiusMd))
+            .clickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = FamDimens.minTouchTarget)
+            .padding(horizontal = FamDimens.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(FamDimens.sm),
+    ) {
+        Text(
+            if (count != null && count > 0) {
+                stringResource(R.string.place_alias_entry, count)
+            } else {
+                stringResource(R.string.place_alias_entry_empty)
+            },
+            style = FamTheme.type.bodyMediumStrong,
+            color = colors.categoryPlace,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, tint = colors.categoryPlace, modifier = Modifier.size(20.dp))
+    }
 }
 
 /** 지역 선택 버튼: 고른 지역 + ▾ (Member Chip 모양) */

@@ -68,8 +68,7 @@ import com.famlog.core.model.Reminder
 import com.famlog.core.model.RepeatFreq
 import com.famlog.feature.chat.formatTime
 import com.famlog.feature.chat.SeoulZone
-import com.famlog.feature.place.PlaceRow
-import com.famlog.feature.place.labelRes
+import com.famlog.feature.place.PlacePickerSheet
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -326,73 +325,6 @@ fun ScheduleEditContent(
         PickerTarget.StartTime -> TimePickerDialogFor(form.startTime, { picker = null }) { onStartTimeChange(it) }
         PickerTarget.EndTime -> TimePickerDialogFor(form.endTime, { picker = null }) { onEndTimeChange(it) }
         null -> Unit
-    }
-}
-
-/** 일정에 연결할 우리 그룹 장소 고르기. 맨 위 "장소 빼기"로 연결을 비운다 */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PlacePickerSheet(
-    picker: PlacePicker,
-    selectedId: Long?,
-    onDismiss: () -> Unit,
-    onPick: (PlaceSummary?) -> Unit,
-) {
-    val colors = FamTheme.colors
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        containerColor = colors.bgDefault,
-        dragHandle = { BottomSheetDefaults.DragHandle(width = 36.dp, height = 4.dp, color = colors.surfacePlaceholder) },
-    ) {
-        Text(
-            stringResource(R.string.place_pick_title),
-            style = FamTheme.type.titleMedium,
-            color = colors.textPrimary,
-            modifier = Modifier.padding(horizontal = FamDimens.lg, vertical = FamDimens.sm).semantics { heading() },
-        )
-        LazyColumn(Modifier.fillMaxWidth().navigationBarsPadding()) {
-            if (selectedId != null) {
-                item(key = "clear") {
-                    TextButton(onClick = { onPick(null) }, modifier = Modifier.padding(horizontal = FamDimens.sm)) {
-                        Text(stringResource(R.string.place_pick_clear), style = FamTheme.type.label, color = colors.statusDanger)
-                    }
-                }
-            }
-            when {
-                picker.loading -> item(key = "loading") {
-                    Box(Modifier.fillMaxWidth().padding(FamDimens.xxl), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = colors.brandPrimary)
-                    }
-                }
-                picker.failed -> item(key = "failed") {
-                    Text(
-                        stringResource(R.string.place_load_failed),
-                        style = FamTheme.type.bodyMedium,
-                        color = colors.statusDanger,
-                        modifier = Modifier.padding(FamDimens.lg),
-                    )
-                }
-                picker.places.isEmpty() -> item(key = "empty") {
-                    Text(
-                        stringResource(R.string.place_pick_empty),
-                        style = FamTheme.type.bodyMedium,
-                        color = colors.textTertiary,
-                        modifier = Modifier.padding(FamDimens.lg),
-                    )
-                }
-            }
-            items(picker.places, key = { it.id }) { place ->
-                PlaceRow(
-                    name = place.name,
-                    subtitle = listOfNotNull(stringResource(place.category.labelRes()), place.address).joinToString(" · "),
-                    rating = null,
-                    onClick = { onPick(place) },
-                    modifier = if (place.id == selectedId) Modifier.background(colors.brandSubtle) else Modifier,
-                )
-            }
-        }
     }
 }
 

@@ -25,4 +25,10 @@ object ErrorCodes {
 
     /** 같은 그룹에 같은 장소가 이미 있다 (PLC-01) */
     const val PLACE_ALREADY_SHARED = "PLACE_ALREADY_SHARED"
+
+    /** 같은 그룹에 같은 별칭이 이미 있다 (PLC-06) */
+    const val ALIAS_DUPLICATED = "ALIAS_DUPLICATED"
+
+    /** 위치기반서비스 동의 없이 내 주변을 불렀다 (PLC-04) */
+    const val LOCATION_CONSENT_REQUIRED = "LOCATION_CONSENT_REQUIRED"
 }
