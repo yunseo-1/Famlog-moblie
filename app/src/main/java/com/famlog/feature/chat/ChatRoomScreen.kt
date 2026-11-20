@@ -83,9 +83,14 @@ import com.famlog.core.model.DismissReason
 import com.famlog.core.model.GroupRole
 import com.famlog.core.model.Member
 import com.famlog.core.model.ReactionEmoji
+import com.famlog.core.model.ReportTarget
+import com.famlog.core.model.ReportTargetType
 import com.famlog.feature.group.shareInvite
 import com.famlog.feature.settings.SettingsEvent
 import com.famlog.feature.settings.AiNoticeSheet
+import com.famlog.feature.report.ReportSheet
+import com.famlog.feature.report.ReportViewModel
+import com.famlog.feature.report.sheetActions
 import com.famlog.feature.settings.AiNoticePromptViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -105,6 +110,7 @@ fun ChatRoomScreen(
     viewModel: ChatRoomViewModel = hiltViewModel(),
     candidateViewModel: CandidateViewModel = hiltViewModel(),
     noticeViewModel: AiNoticePromptViewModel = hiltViewModel(),
+    reportViewModel: ReportViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val candidates by candidateViewModel.uiState.collectAsStateWithLifecycle()
@@ -152,6 +158,12 @@ fun ChatRoomScreen(
         }
     }
 
+    // 신고 (MOD-01): 메시지·AI 후보 카드
+    val reportSheet by reportViewModel.sheet.collectAsStateWithLifecycle()
+    LaunchedEffect(reportViewModel) {
+        reportViewModel.events.collect { snackbarHostState.showSnackbar(it.asString(context)) }
+    }
+
     // AI 분석 안내 (SET-01): 켜진 그룹에서 아직 확인하지 않았으면 한 번
     val noticePrompt by noticeViewModel.prompt.collectAsStateWithLifecycle()
     LaunchedEffect(noticeViewModel) {
@@ -185,12 +197,20 @@ fun ChatRoomScreen(
         onOpenMedia = { message, index -> message.id?.let { onOpenMedia(message.groupId, it, index) } },
         onOpenPlace = onOpenPlace,
         candidates = candidates,
-        candidateActions = remember(candidateViewModel) { candidateViewModel.actions.cardActions() },
+        candidateActions = remember(candidateViewModel, reportViewModel) {
+            candidateViewModel.actions.cardActions().copy(
+                onReport = { reportViewModel.open(ReportTarget(ReportTargetType.AI_OUTPUT, it.id)) },
+            )
+        },
         scrollKey = scrollKey,
         onScrolled = { scrollKey = null },
         onOpenInbox = onOpenInbox,
         onOpenSettings = onOpenSettings,
     )
+
+    reportSheet?.let { sheet ->
+        ReportSheet(state = sheet, actions = remember(reportViewModel) { reportViewModel.sheetActions() })
+    }
 
     noticePrompt?.let { prompt ->
         AiNoticeSheet(
@@ -218,7 +238,7 @@ fun ChatRoomScreen(
             onReact = { viewModel.toggleReaction(target, it) },
             onReply = { viewModel.startReply(target) },
             onDelete = { viewModel.delete(target) },
-            onReport = viewModel::report,
+            onReport = { target.id?.let { reportViewModel.open(ReportTarget(ReportTargetType.MESSAGE, it)) } },
             onRetry = { viewModel.retry(target) },
             onDiscard = { viewModel.discard(target) },
         )
@@ -479,6 +499,8 @@ data class CandidateCardActions(
     val onUndo: (Candidate) -> Unit = {},
     val onOpen: (Candidate) -> Unit = {},
     val onShowEvidence: (Candidate) -> Unit = {},
+    /** AI 결과 [신고] (사양서 7.2) */
+    val onReport: (Candidate) -> Unit = {},
     /** 변경·완료 후보: 대상이 여럿이면 고른다 */
     val onPickTarget: (Candidate, Long) -> Unit = { _, _ -> },
 )
@@ -505,6 +527,7 @@ private fun CandidateItem(candidate: Candidate, anchor: ChatMessage, candidates:
             onEdit = { actions.onEdit(candidate) },
             onDismiss = { actions.onDismiss(candidate, it) },
             onShowEvidence = { actions.onShowEvidence(candidate) },
+            onReport = { actions.onReport(candidate) },
             viewer = candidates.viewer,
             pickedTarget = candidates.picks[candidate.id],
             onPickTarget = { actions.onPickTarget(candidate, it) },

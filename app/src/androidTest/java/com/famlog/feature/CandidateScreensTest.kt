@@ -287,6 +287,19 @@ class CandidateScreensTest {
         assertEquals(true, submitted)
     }
 
+    @Test
+    fun AI_후보_카드에서_앱을_나가지_않고_신고한다() {
+        var reported: Candidate? = null
+        room(
+            CandidateUiState(byAnchor = mapOf(30L to listOf(candidate)), members = members, today = today),
+            CandidateCardActions(onReport = { reported = it }),
+        )
+
+        compose.onNodeWithText("AI 제안").assertExists()
+        compose.onNode(hasText("신고") and hasClickAction()).performClick()
+        assertEquals(1L, reported?.id)
+    }
+
     // ---- 기존 일정 변경·할 일 완료 후보 ----
 
     private fun movie(id: Long, createdBy: Long, hour: Int = 11) = TargetItem(

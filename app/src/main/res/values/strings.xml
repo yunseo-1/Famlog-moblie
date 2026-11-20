@@ -123,7 +123,6 @@
     <string name="chat_menu_report">신고</string>
     <string name="chat_menu_retry">다시 보내기</string>
     <string name="chat_menu_discard">보내지 않고 지우기</string>
-    <string name="chat_report_coming">신고 기능은 곧 제공돼요.</string>
     <string name="chat_load_failed">메시지를 불러오지 못했어요.</string>
     <string name="chat_drawer_title">채팅방 서랍</string>
     <string name="chat_drawer_members">구성원 %1$d</string>
@@ -483,4 +482,28 @@
     <string name="ai_notice_close">닫기</string>
     <string name="ai_notice_changed">안내가 바뀌었어요. 다시 확인해 주세요.</string>
     <string name="ai_notice_opted_out">이 그룹에서 내 메시지를 AI 분석에서 뺐어요. 그룹 설정에서 바꿀 수 있어요.</string>
+
+    <!-- 신고 (MOD-01, SCR-82) -->
+    <string name="candidate_report">신고</string>
+    <string name="media_viewer_report">신고</string>
+    <string name="report_title">신고하기</string>
+    <string name="report_guide_message">이 메시지를 신고하는 이유를 골라 주세요. 신고한 사람은 알리지 않아요.</string>
+    <string name="report_guide_media">이 사진·동영상을 신고하는 이유를 골라 주세요. 신고한 사람은 알리지 않아요.</string>
+    <string name="report_guide_ai">이 AI 제안을 신고하는 이유를 골라 주세요. AI를 고치는 데 쓰여요.</string>
+    <string name="report_guide_user">이 구성원을 신고하는 이유를 골라 주세요. 신고한 사람은 알리지 않아요.</string>
+    <string name="report_reason_spam">스팸·광고</string>
+    <string name="report_reason_harassment">괴롭힘·욕설</string>
+    <string name="report_reason_sexual">성적인 내용</string>
+    <string name="report_reason_violence">폭력·위협</string>
+    <string name="report_reason_child_safety">아동 안전 문제</string>
+    <string name="report_reason_privacy">개인정보 노출</string>
+    <string name="report_reason_ai_inaccurate">AI 제안이 틀렸어요</string>
+    <string name="report_reason_other">기타</string>
+    <string name="report_reason_required">신고 이유를 골라 주세요.</string>
+    <string name="report_detail_optional">자세한 내용 (선택)</string>
+    <string name="report_detail_required">자세한 내용 (필수)</string>
+    <string name="report_detail_missing">기타를 고르면 내용을 적어 주세요.</string>
+    <string name="report_detail_count">%1$d/%2$d</string>
+    <string name="report_submit">신고하기</string>
+    <string name="report_done">신고가 접수됐어요. 확인 후 조치할게요.</string>
 </resources>
