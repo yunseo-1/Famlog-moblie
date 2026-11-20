@@ -18,6 +18,7 @@ import com.famlog.core.model.CandidateEvidence
 import com.famlog.core.model.CandidateFields
 import com.famlog.core.model.CandidateLocation
 import com.famlog.core.model.CandidateStatus
+import com.famlog.core.model.CandidateTarget
 import com.famlog.core.model.CandidateSurface
 import com.famlog.core.model.CandidateType
 import com.famlog.core.model.ChatMessage
@@ -32,7 +33,10 @@ import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.PlaceOption
 import com.famlog.core.model.PlaceSearchItem
 import com.famlog.core.model.PlaceSearchPage
+import com.famlog.core.model.ScheduleTiming
 import com.famlog.core.model.SendState
+import com.famlog.core.model.TargetAction
+import com.famlog.core.model.TargetItem
 import com.famlog.testing.FakeSessionStore
 import com.famlog.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -365,6 +369,75 @@ class CandidateViewModelTest {
         assertNotNull(form.toApproval(listOf(me, mom, dad), SeoulZone))
     }
 
+    @Test
+    fun 변경_후보는_값_없이_대상만_보내고_여럿이면_고른_뒤에만_보낸다() = runTest(mainRule.dispatcher) {
+        val single = change(11, item = target(6, createdBy = ME))
+        val multi = change(12, item = null, choices = listOf(target(6, createdBy = ME), target(7, createdBy = MOM)))
+        store.value = listOf(single, multi)
+        coEvery { candidates.approve(any(), any()) } answers { ApiResult.Success(firstArg<Candidate>().copy(status = CandidateStatus.APPROVED)) }
+        val viewModel = started()
+        assertEquals(CandidateViewer(ME, GroupRole.MEMBER), viewModel.uiState.value.viewer)
+
+        viewModel.actions.approve(single)
+        coVerify { candidates.approve(single, CandidateApproval.Target(null)) }
+
+        // 고르기 전에는 보내지 않고, 목록에 없는 것은 고를 수 없다
+        viewModel.actions.approve(multi)
+        viewModel.actions.pickTarget(multi, 99)
+        coVerify(exactly = 0) { candidates.approve(multi, any()) }
+
+        viewModel.actions.pickTarget(multi, 7)
+        assertEquals(mapOf(12L to 7L), viewModel.uiState.value.picks)
+        viewModel.actions.approve(multi)
+        coVerify { candidates.approve(multi, CandidateApproval.Target(7)) }
+        assertTrue(viewModel.uiState.value.picks.isEmpty())
+    }
+
+    @Test
+    fun 그사이_대상이_바뀌었거나_권한이_없으면_카드를_남기고_서버_문구를_보인다() = runTest(mainRule.dispatcher) {
+        val candidate = change(11, item = target(6, createdBy = MOM))
+        store.value = listOf(candidate)
+        coEvery { candidates.approve(candidate, any()) } returns
+            ApiResult.Failure(409, ApiError(ErrorCodes.CANDIDATE_TARGET_CHANGED, "그사이 일정이나 할 일이 바뀌었거나 지워졌어요.", null)) andThen
+            ApiResult.Failure(403, ApiError(ErrorCodes.GROUP_ROLE_REQUIRED, "내가 등록한 일정만 고치거나 지울 수 있어요.", null))
+        val viewModel = started()
+
+        viewModel.events.test {
+            viewModel.actions.approve(candidate)
+            assertEquals(CandidateEvent.Message(UiText.Plain("그사이 일정이나 할 일이 바뀌었거나 지워졌어요.")), awaitItem())
+            viewModel.actions.approve(candidate)
+            assertEquals(CandidateEvent.Message(UiText.Plain("내가 등록한 일정만 고치거나 지울 수 있어요.")), awaitItem())
+        }
+        assertEquals(listOf(11L), viewModel.uiState.value.byAnchor.getValue(ANCHOR).map { it.id })
+        assertTrue(viewModel.uiState.value.busy.isEmpty())
+    }
+
+    @Test
+    fun 변경_완료_후보를_되돌리면_무엇을_되돌렸는지_알린다() = runTest(mainRule.dispatcher) {
+        val changed = change(11, item = target(6, createdBy = ME)).copy(status = CandidateStatus.APPROVED, decidedBy = ME)
+        val completed = changed.copy(id = 12, target = changed.target!!.copy(entityType = CandidateEntity.TODO, action = TargetAction.COMPLETE))
+        coEvery { candidates.undo(any()) } answers { ApiResult.Success(firstArg<Candidate>().copy(status = CandidateStatus.UNDONE)) }
+        val viewModel = started()
+
+        viewModel.events.test {
+            viewModel.actions.undo(changed)
+            assertEquals(CandidateEvent.Message(UiText.Res(R.string.candidate_undone_change)), awaitItem())
+            viewModel.actions.undo(completed)
+            assertEquals(CandidateEvent.Message(UiText.Res(R.string.candidate_undone_complete)), awaitItem())
+        }
+    }
+
+    @Test
+    fun 변경_후보는_승인_전에_값을_고칠_수_없어_시트를_열지_않는다() = runTest(mainRule.dispatcher) {
+        val candidate = change(11, item = target(6, createdBy = ME))
+        val viewModel = started()
+
+        viewModel.actions.edit(candidate)
+
+        assertNull(viewModel.uiState.value.sheet)
+        coVerify(exactly = 0) { candidates.detail(any()) }
+    }
+
     // ---- 도우미 ----
 
     private fun message(seq: Long) = ChatMessage(
@@ -406,6 +479,17 @@ class CandidateViewModelTest {
             ),
             opinion = "칼국수가 정말 맛있음", recommendedBy = DAD,
         ),
+    )
+
+    private fun target(id: Long, createdBy: Long) = TargetItem(
+        entityId = id, title = "영화 $id", createdBy = createdBy,
+        before = ScheduleTiming(LocalDate.of(2026, 11, 21), LocalTime.of(11, 0), LocalTime.of(13, 0), allDay = false),
+        after = ScheduleTiming(LocalDate.of(2026, 11, 21), LocalTime.of(12, 0), LocalTime.of(14, 0), allDay = false),
+    )
+
+    /** "11시 말고 12시로 하자" → 기존 일정 변경 후보 */
+    private fun change(id: Long, item: TargetItem?, choices: List<TargetItem> = emptyList()) = schedule(id).copy(
+        target = CandidateTarget(CandidateEntity.SCHEDULE, TargetAction.CHANGE, item, choices),
     )
 
     private fun evidence(sender: Long, seq: Long = 30, id: Long = ANCHOR, spans: List<String> = emptyList()) =

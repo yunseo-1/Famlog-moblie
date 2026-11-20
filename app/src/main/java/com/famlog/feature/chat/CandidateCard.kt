@@ -53,6 +53,7 @@ import com.famlog.core.model.CandidateType
 import com.famlog.core.model.ChatMessage
 import com.famlog.core.model.DismissReason
 import com.famlog.core.model.Member
+import com.famlog.core.model.TargetAction
 import com.famlog.feature.place.labelRes
 import com.famlog.feature.place.regionText
 import java.time.LocalDate
@@ -77,12 +78,19 @@ fun CandidateCard(
     onDismiss: (DismissReason?) -> Unit,
     onShowEvidence: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 변경 후보의 [바꾸기] 권한 판단 */
+    viewer: CandidateViewer = CandidateViewer(),
+    /** 대상이 여럿인 변경·완료 후보에서 고른 대상 */
+    pickedTarget: Long? = null,
+    onPickTarget: (Long) -> Unit = {},
     /** 채팅방은 아바타 폭만큼 들여 280까지, 제안함은 화면 너비 */
     indent: Boolean = true,
 ) {
     val colors = FamTheme.colors
     val (accent, background) = colors.categoryOf(candidate.type)
     val nameOf = { id: Long? -> members.firstOrNull { it.userId == id }?.displayName }
+    val target = candidate.target
+    val title = target?.resolve(pickedTarget)?.title ?: candidate.fields.title
     Column(
         modifier = modifier
             .then(if (indent) Modifier.padding(start = FamDimens.chatIndent).widthIn(max = FamDimens.candidateCardWidth) else Modifier)
@@ -95,21 +103,25 @@ fun CandidateCard(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FamDimens.xs)) {
             Icon(painterResource(R.drawable.ic_sparkle), contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
             Text(
-                stringResource(candidate.type.foundRes()),
+                stringResource(candidate.headerRes()),
                 style = FamTheme.type.label,
                 color = accent,
                 modifier = Modifier.semantics { heading() },
             )
         }
         Text(
-            candidate.fields.title ?: stringResource(R.string.candidate_no_title),
+            title ?: stringResource(R.string.candidate_no_title),
             style = FamTheme.type.bodyMediumStrong,
-            color = if (candidate.fields.title == null) colors.textTertiary else colors.textPrimary,
+            color = if (title == null) colors.textTertiary else colors.textPrimary,
         )
-        candidateMeta(candidate, nameOf).forEach { line ->
-            Text(line, style = FamTheme.type.bodyMedium, color = colors.textSecondary)
+        if (target != null) {
+            TargetBody(target, pickedTarget, viewer, nameOf, onPickTarget)
+        } else {
+            candidateMeta(candidate, nameOf).forEach { line ->
+                Text(line, style = FamTheme.type.bodyMedium, color = colors.textSecondary)
+            }
+            inferredText(candidate)?.let { text -> InferredRow(text) }
         }
-        inferredText(candidate)?.let { text -> InferredRow(text) }
         Evidence(
             quote = anchor?.body,
             meta = if (anchor != null) {
@@ -124,23 +136,39 @@ fun CandidateCard(
             accent = accent,
             onClick = onShowEvidence,
         )
+        // 변경 후보: 내가 등록한 일정·관리자 이상만 [바꾸기]. 대상이 여럿이면 하나라도 바꿀 수 있어야 한다
+        val picked = target?.resolve(pickedTarget)
+        val allowed = when {
+            target == null -> true
+            picked != null -> target.allows(picked, viewer.userId, viewer.role)
+            else -> target.choices.any { target.allows(it, viewer.userId, viewer.role) }
+        }
+        if (!allowed) {
+            Text(stringResource(R.string.candidate_target_not_allowed), style = FamTheme.type.bodyMedium, color = colors.textSecondary)
+        }
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(FamDimens.sm),
             verticalArrangement = Arrangement.spacedBy(FamDimens.xs),
         ) {
-            FamButton(
-                text = stringResource(R.string.candidate_approve),
-                onClick = onApprove,
-                size = FamButtonSize.SMALL,
-                loading = busy,
-            )
-            FamButton(
-                text = stringResource(R.string.candidate_edit),
-                onClick = onEdit,
-                style = FamButtonStyle.SECONDARY,
-                size = FamButtonSize.SMALL,
-                enabled = !busy,
-            )
+            if (allowed) {
+                FamButton(
+                    text = stringResource(candidate.approveRes()),
+                    onClick = onApprove,
+                    size = FamButtonSize.SMALL,
+                    enabled = target == null || picked != null,
+                    loading = busy,
+                )
+            }
+            // 변경·완료 후보는 승인 전에 값을 고칠 수 없다 (v1.1). 틀렸으면 [무시] 후 직접 수정
+            if (target == null) {
+                FamButton(
+                    text = stringResource(R.string.candidate_edit),
+                    onClick = onEdit,
+                    style = FamButtonStyle.SECONDARY,
+                    size = FamButtonSize.SMALL,
+                    enabled = !busy,
+                )
+            }
             DismissButton(enabled = !busy, onDismiss = onDismiss)
         }
         Text(stringResource(R.string.candidate_ai_label), style = FamTheme.type.caption, color = colors.textTertiary)
@@ -239,6 +267,7 @@ internal fun InferredBadge() {
 
 /**
  * Figma Resolved Chip `26:134`: "캘린더에 등록됨 · 엄마 · 보기" + 5분 동안 [되돌리기].
+ * 변경·완료 후보는 "일정을 바꿨어요 · 엄마 · 보기" / "할 일을 완료했어요 · 엄마".
  * 할 일은 아직 상세 화면이 없어 [보기]를 두지 않는다.
  */
 @Composable
@@ -293,6 +322,18 @@ fun ResolvedChip(
     }
 }
 
+private fun Candidate.headerRes(): Int = when (target?.action) {
+    TargetAction.CHANGE -> R.string.candidate_target_change
+    TargetAction.COMPLETE -> R.string.candidate_target_complete
+    null -> type.foundRes()
+}
+
+private fun Candidate.approveRes(): Int = when (target?.action) {
+    TargetAction.CHANGE -> R.string.candidate_approve_change
+    TargetAction.COMPLETE -> R.string.candidate_approve_complete
+    null -> R.string.candidate_approve
+}
+
 private fun CandidateType.foundRes(): Int = when (this) {
     CandidateType.SCHEDULE -> R.string.candidate_found_schedule
     CandidateType.ANNIVERSARY -> R.string.candidate_found_anniversary
@@ -301,6 +342,8 @@ private fun CandidateType.foundRes(): Int = when (this) {
 }
 
 private fun Candidate.resolvedRes(): Int = when {
+    target?.action == TargetAction.CHANGE -> R.string.candidate_resolved_changed
+    target?.action == TargetAction.COMPLETE -> R.string.candidate_resolved_completed
     type == CandidateType.TODO -> R.string.candidate_resolved_todo
     type == CandidateType.PLACE && linkedExisting -> R.string.candidate_resolved_place_linked
     type == CandidateType.PLACE -> R.string.candidate_resolved_place

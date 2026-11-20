@@ -45,6 +45,9 @@ object ErrorCodes {
     /** 후보: 채울 항목이 있다 → 수정 시트 (fieldErrors) */
     const val CANDIDATE_MISSING_FIELDS = "CANDIDATE_MISSING_FIELDS"
 
+    /** 변경·완료 후보: 그사이 대상이 바뀌었거나 지워졌거나 이미 완료됐다. 후보는 PENDING 그대로 */
+    const val CANDIDATE_TARGET_CHANGED = "CANDIDATE_TARGET_CHANGED"
+
     /** 후보: 승인한 사람·관리자가 아니거나 5분이 지났다 */
     const val CANDIDATE_NOT_UNDOABLE = "CANDIDATE_NOT_UNDOABLE"
 }

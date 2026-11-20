@@ -171,6 +171,9 @@ fun CandidateInboxContent(
                         onEdit = { cardActions.onEdit(candidate) },
                         onDismiss = { cardActions.onDismiss(candidate, it) },
                         onShowEvidence = { cardActions.onShowEvidence(candidate) },
+                        viewer = state.viewer,
+                        pickedTarget = state.picks[candidate.id],
+                        onPickTarget = { cardActions.onPickTarget(candidate, it) },
                         indent = false,
                     )
                 }

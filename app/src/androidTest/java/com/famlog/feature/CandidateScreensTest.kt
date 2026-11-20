@@ -1,5 +1,6 @@
 package com.famlog.feature
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
@@ -17,6 +18,7 @@ import com.famlog.core.model.CandidateFields
 import com.famlog.core.model.CandidateLocation
 import com.famlog.core.model.CandidateStatus
 import com.famlog.core.model.CandidateSurface
+import com.famlog.core.model.CandidateTarget
 import com.famlog.core.model.CandidateType
 import com.famlog.core.model.ChatMessage
 import com.famlog.core.model.DismissReason
@@ -25,7 +27,10 @@ import com.famlog.core.model.ItemSource
 import com.famlog.core.model.Member
 import com.famlog.core.model.MessageType
 import com.famlog.core.model.Schedule
+import com.famlog.core.model.ScheduleTiming
 import com.famlog.core.model.SendState
+import com.famlog.core.model.TargetAction
+import com.famlog.core.model.TargetItem
 import com.famlog.feature.calendar.ScheduleDetailContent
 import com.famlog.feature.calendar.ScheduleDetailUiState
 import com.famlog.feature.chat.CandidateCardActions
@@ -36,6 +41,7 @@ import com.famlog.feature.chat.CandidateSheet
 import com.famlog.feature.chat.CandidateSheetActions
 import com.famlog.feature.chat.CandidateSheetContent
 import com.famlog.feature.chat.CandidateUiState
+import com.famlog.feature.chat.CandidateViewer
 import com.famlog.feature.chat.ChatRoomContent
 import com.famlog.feature.chat.ChatRoomUiState
 import com.famlog.feature.chat.SeoulZone
@@ -279,5 +285,110 @@ class CandidateScreensTest {
         compose.onNodeWithText("AI 추정 · 확인 필요").assertExists()
         compose.onNodeWithText("등록").assertIsEnabled().performClick()
         assertEquals(true, submitted)
+    }
+
+    // ---- 기존 일정 변경·할 일 완료 후보 ----
+
+    private fun movie(id: Long, createdBy: Long, hour: Int = 11) = TargetItem(
+        entityId = id, title = "영화 보기 $id", createdBy = createdBy,
+        before = ScheduleTiming(LocalDate.of(2026, 11, 21), LocalTime.of(hour, 0), null, allDay = false),
+        after = ScheduleTiming(LocalDate.of(2026, 11, 21), LocalTime.of(hour + 1, 0), null, allDay = false),
+    )
+
+    private fun change(item: TargetItem?, choices: List<TargetItem> = emptyList()) = candidate.copy(
+        id = 11, inferred = emptySet(),
+        target = CandidateTarget(CandidateEntity.SCHEDULE, TargetAction.CHANGE, item, choices),
+    )
+
+    @Test
+    fun 일정_변경_후보는_바꾸기_전후와_바꾸기_무시만_보인다() {
+        var approved: Candidate? = null
+        room(
+            CandidateUiState(
+                byAnchor = mapOf(30L to listOf(change(movie(6, createdBy = 7)))), members = members,
+                viewer = CandidateViewer(7, GroupRole.MEMBER),
+            ),
+            CandidateCardActions(onApprove = { approved = it }),
+        )
+
+        compose.onNodeWithText("일정을 바꿀까요?").assertExists()
+        compose.onNodeWithText("영화 보기 6").assertExists()
+        compose.onNodeWithText("11/21(토) 오전 11:00 → 오후 12:00").assertExists()
+        compose.onNodeWithText("수정").assertDoesNotExist()
+        compose.onNodeWithText("무시").assertExists()
+
+        compose.onNodeWithText("바꾸기").performClick()
+        assertEquals(11L, approved?.id)
+    }
+
+    @Test
+    fun 남이_등록한_일정이면_바꾸기_대신_안내를_보인다() {
+        room(
+            CandidateUiState(
+                byAnchor = mapOf(30L to listOf(change(movie(6, createdBy = 8)))), members = members,
+                viewer = CandidateViewer(7, GroupRole.MEMBER),
+            ),
+        )
+
+        compose.onNodeWithText("등록한 사람이나 관리자만 바꿀 수 있어요").assertExists()
+        compose.onNodeWithText("바꾸기").assertDoesNotExist()
+        compose.onNodeWithText("무시").assertExists()
+    }
+
+    @Test
+    fun 대상이_여럿이면_고른_뒤에_바꿀_수_있고_바꿀_수_없는_일정은_고를_수_없다() {
+        var picked: Long? = null
+        val candidate = change(item = null, choices = listOf(movie(6, createdBy = 7), movie(7, createdBy = 8, hour = 15)))
+        val state = mutableStateOf(
+            CandidateUiState(byAnchor = mapOf(30L to listOf(candidate)), members = members, viewer = CandidateViewer(7, GroupRole.MEMBER)),
+        )
+        compose.setContent {
+            FamLogTheme {
+                ChatRoomContent(
+                    state = ChatRoomUiState(
+                        groupName = "우리 가족", memberCount = 2, members = members.associateBy { it.userId }, myUserId = 7,
+                        rows = buildChatRows(listOf(anchor), SeoulZone), today = today,
+                    ),
+                    onBack = {}, onInputChange = {}, onSend = {}, onCancelReply = {}, onLoadOlder = {},
+                    onLongPress = {}, onReactionClick = { _, _ -> }, onInvite = {},
+                    candidates = state.value,
+                    candidateActions = CandidateCardActions(onPickTarget = { _, id -> picked = id }),
+                )
+            }
+        }
+
+        compose.onNodeWithText("어느 일정인가요?").assertExists()
+        compose.onNodeWithText("바꾸기").assertIsNotEnabled()
+        compose.onNode(hasText("영화 보기 7") and hasClickAction()).assertIsNotEnabled()
+        compose.onNode(hasText("영화 보기 6") and hasClickAction()).assertIsEnabled().performClick()
+        assertEquals(6L, picked)
+
+        state.value = state.value.copy(picks = mapOf(11L to 6L))
+        compose.onNodeWithText("11/21(토) 오전 11:00 → 오후 12:00").assertExists()
+        compose.onNodeWithText("바꾸기").assertIsEnabled()
+    }
+
+    @Test
+    fun 할_일_완료_후보는_완료_버튼이고_승인하면_완료했어요_칩() {
+        val complete = candidate.copy(
+            id = 12, type = CandidateType.TODO, inferred = emptySet(),
+            fields = CandidateFields.Todo("세제 사 오기", null, emptyList(), false, emptyList(), emptyList()),
+            target = CandidateTarget(
+                CandidateEntity.TODO, TargetAction.COMPLETE,
+                TargetItem(entityId = 3, title = "세제 사 오기", dueDate = LocalDate.of(2026, 11, 22), assigneeId = 8), emptyList(),
+            ),
+        )
+        val done = complete.copy(id = 13, status = CandidateStatus.APPROVED, decidedBy = 8, entityType = CandidateEntity.TODO, entityId = 3)
+        room(
+            CandidateUiState(
+                byAnchor = mapOf(30L to listOf(complete, done)), members = members,
+                viewer = CandidateViewer(7, GroupRole.MEMBER),
+            ),
+        )
+
+        compose.onNodeWithText("할 일을 완료할까요?").assertExists()
+        compose.onNodeWithText("담당: 엄마 · 기한 11/22(일)까지").assertExists()
+        compose.onNodeWithText("완료").assertExists()
+        compose.onNodeWithText("할 일을 완료했어요 · 엄마").assertExists()
     }
 }

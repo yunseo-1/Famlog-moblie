@@ -11,14 +11,19 @@ import com.famlog.core.model.CandidateResolved
 import com.famlog.core.model.CandidateStatus
 import com.famlog.core.model.CandidateSurface
 import com.famlog.core.model.CandidateType
+import com.famlog.core.model.CandidateTarget
 import com.famlog.core.model.ItemSource
 import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.PlaceOption
+import com.famlog.core.model.ScheduleTiming
+import com.famlog.core.model.TargetAction
+import com.famlog.core.model.TargetItem
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
@@ -68,6 +73,8 @@ data class ApproveRequest(
     val schedule: ScheduleRequest? = null,
     val todo: CreateTodoRequest? = null,
     val place: ApprovePlaceRequest? = null,
+    /** 변경·완료 후보: target.choices 중 고른 entityId */
+    val targetId: Long? = null,
 )
 
 @Serializable
@@ -97,6 +104,7 @@ data class CandidateResponse(
     val linkedExisting: Boolean = false,
     val expiresAt: String? = null,
     val createdAt: String,
+    val target: JsonObject? = null,
 )
 
 @Serializable
@@ -137,9 +145,10 @@ data class CandidateResolvedEvent(
     val linkedExisting: Boolean = false,
 )
 
-/** 모르는 유형은 null (앱이 아직 못 그리는 후보) */
+/** 모르는 유형·읽지 못한 대상은 null (앱이 아직 못 그리는 후보. 새 항목 카드로 잘못 보이지 않게 뺀다) */
 fun CandidateResponse.toModel(): Candidate? {
     val type = CandidateType.entries.firstOrNull { it.name == type } ?: return null
+    val target = target?.let { it.toTarget() ?: return null }
     return Candidate(
         id = id,
         groupId = groupId,
@@ -160,6 +169,7 @@ fun CandidateResponse.toModel(): Candidate? {
         linkedExisting = linkedExisting,
         expiresAt = expiresAt?.let(::parseServerTime),
         createdAt = parseServerTime(createdAt),
+        target = target,
     )
 }
 
@@ -237,6 +247,38 @@ private fun JsonObject.toFields(type: CandidateType): CandidateFields = when (ty
         opinion = string("opinion"),
         recommendedBy = long("recommendedBy"),
     )
+}
+
+/** target: {entityType, action, entityId?, title?, createdBy?, before?, after?, choices[]} */
+private fun JsonObject.toTarget(): CandidateTarget? {
+    val entity = entityOf(string("entityType"))?.takeIf { it != CandidateEntity.PLACE } ?: return null
+    val action = TargetAction.entries.firstOrNull { it.name == string("action") } ?: return null
+    val item = toTargetItem()
+    val choices = (this["choices"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonObject)?.toTargetItem() }
+    if (item == null && choices.isEmpty()) return null
+    return CandidateTarget(entity, action, item, choices)
+}
+
+private fun JsonObject.toTargetItem(): TargetItem? {
+    val id = long("entityId") ?: return null
+    val before = this["before"] as? JsonObject
+    return TargetItem(
+        entityId = id,
+        title = string("title"),
+        createdBy = long("createdBy"),
+        before = before?.toTiming(),
+        after = (this["after"] as? JsonObject)?.toTiming(),
+        dueDate = before?.string("dueDate")?.let(::parseDate),
+        assigneeId = before?.long("assigneeId"),
+    )
+}
+
+/** 일정 before·after. 날짜가 없으면(할 일) null */
+private fun JsonObject.toTiming(): ScheduleTiming? {
+    val date = string("date")?.let(::parseDate) ?: return null
+    val start = string("startTime")?.let(::parseTime)
+    val allDay = this["allDay"].primitive()?.takeIf { !it.isString }?.booleanOrNull ?: (start == null)
+    return ScheduleTiming(date, start.takeUnless { allDay }, string("endTime")?.let(::parseTime).takeUnless { allDay }, allDay)
 }
 
 private fun JsonElement?.primitive(): JsonPrimitive? = this as? JsonPrimitive
