@@ -71,7 +71,7 @@ Famlog/
 │     │  ├ core/push/     FCM 수신 서비스, 알림 채널·표시(PushNotifier)
 │     │  ├ core/network/  Retrofit·OkHttp, AuthInterceptor, TokenAuthenticator(재발급 1회 동기화), SessionEvents, ChatSocket(STOMP 직접 구현)
 │     │  ├ core/designsystem/  theme/FamTheme.kt(토큰), component/(FamAppBar, FamBottomNav, …)
-│     │  └ feature/{auth,group,chat,calendar,place,album,story}/  화면 (settings는 S20에서 추가)
+│     │  └ feature/{auth,group,chat,calendar,place,album,story,settings}/  화면 (settings: 그룹 설정·AI 분석 안내, S20-1)
 │     ├ debug/          로컬 서버 평문 허용, 요청 로그(BASIC), EXIF 검증 화면 — 릴리스에 포함 안 됨
 │     └ release/        빌드 타입별 네트워크 모듈 (로그 없음)
 ├ gradle/, build.gradle.kts, settings.gradle.kts   (버전은 gradle/libs.versions.toml)

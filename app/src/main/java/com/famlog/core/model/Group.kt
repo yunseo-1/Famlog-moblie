@@ -37,6 +37,8 @@ data class Member(
     val familyRole: FamilyRole?,
     val familyTitle: String?,
     val calendarColor: String?,
+    /** AI 분석 제외. 내가 관리자 이상일 때만 서버가 알려 주고(볼 수만 있다, 사양서 8.8) 아니면 null */
+    val aiOptOut: Boolean? = null,
 ) {
     /** 채팅·캘린더에 보일 이름: 호칭(예: 엄마)이 있으면 호칭, 없으면 닉네임 */
     val displayName: String get() = familyTitle?.takeIf { it.isNotBlank() } ?: nickname

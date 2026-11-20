@@ -33,6 +33,9 @@ import kotlinx.serialization.Serializable
 /** SCR-14 제안함 (채팅방 앱바 sparkle) */
 @Serializable data class CandidateInboxRoute(val groupId: Long)
 
+/** 그룹 설정 (채팅방 서랍 → 그룹 설정, SET-01) */
+@Serializable data class GroupSettingsRoute(val groupId: Long)
+
 /** 사진·동영상 전체 화면 (CHAT-05) */
 @Serializable data class MediaViewerRoute(val groupId: Long, val messageId: Long, val index: Int)
 
