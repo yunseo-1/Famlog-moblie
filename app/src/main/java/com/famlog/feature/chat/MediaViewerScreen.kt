@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
@@ -19,7 +20,10 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +37,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -41,11 +46,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.famlog.R
+import com.famlog.core.designsystem.asString
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
 import com.famlog.core.model.ChatMedia
 import com.famlog.core.model.MediaKind
 import com.famlog.core.model.MediaStatus
+import com.famlog.core.model.ReportTarget
+import com.famlog.core.model.ReportTargetType
+import com.famlog.feature.report.ReportSheet
+import com.famlog.feature.report.ReportViewModel
+import com.famlog.feature.report.sheetActions
 
 /** 사진·동영상 전체 화면 (CHAT-05). 좌우로 넘기고, 사진은 두 손가락·두 번 탭으로 확대 */
 @OptIn(ExperimentalFoundationApi::class)
@@ -53,8 +64,16 @@ import com.famlog.core.model.MediaStatus
 fun MediaViewerScreen(
     onClose: () -> Unit,
     viewModel: MediaViewerViewModel = hiltViewModel(),
+    reportViewModel: ReportViewModel = hiltViewModel(),
 ) {
     val media by viewModel.media.collectAsStateWithLifecycle()
+    val reportable by viewModel.reportable.collectAsStateWithLifecycle()
+    val reportSheet by reportViewModel.sheet.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(reportViewModel) {
+        reportViewModel.events.collect { snackbarHostState.showSnackbar(it.asString(context)) }
+    }
     val colors = FamTheme.colors
     Box(
         Modifier
@@ -84,6 +103,18 @@ fun MediaViewerScreen(
                     .statusBarsPadding()
                     .padding(top = FamDimens.lg),
             )
+            // 지금 보고 있는 사진·동영상을 신고한다 (MOD-01)
+            if (reportable) {
+                TextButton(
+                    onClick = { items.getOrNull(pager.currentPage)?.let { reportViewModel.open(ReportTarget(ReportTargetType.MEDIA, it.id)) } },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(FamDimens.xs),
+                ) {
+                    Text(stringResource(R.string.media_viewer_report), style = FamTheme.type.label, color = colors.onMediaViewer)
+                }
+            }
         }
         Row(
             Modifier
@@ -99,6 +130,10 @@ fun MediaViewerScreen(
                 )
             }
         }
+        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
+    }
+    reportSheet?.let { sheet ->
+        ReportSheet(state = sheet, actions = remember(reportViewModel) { reportViewModel.sheetActions() })
     }
 }
 

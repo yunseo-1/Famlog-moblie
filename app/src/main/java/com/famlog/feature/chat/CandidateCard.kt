@@ -78,6 +78,8 @@ fun CandidateCard(
     onDismiss: (DismissReason?) -> Unit,
     onShowEvidence: () -> Unit,
     modifier: Modifier = Modifier,
+    /** AI 결과 [신고] (사양서 7.2) */
+    onReport: () -> Unit = {},
     /** 변경 후보의 [바꾸기] 권한 판단 */
     viewer: CandidateViewer = CandidateViewer(),
     /** 대상이 여럿인 변경·완료 후보에서 고른 대상 */
@@ -171,7 +173,24 @@ fun CandidateCard(
             }
             DismissButton(enabled = !busy, onDismiss = onDismiss)
         }
-        Text(stringResource(R.string.candidate_ai_label), style = FamTheme.type.caption, color = colors.textTertiary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.candidate_ai_label),
+                style = FamTheme.type.caption,
+                color = colors.textTertiary,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                stringResource(R.string.candidate_report),
+                style = FamTheme.type.caption,
+                color = colors.textTertiary,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier
+                    .heightIn(min = 24.dp)
+                    .clickable(role = Role.Button, onClick = onReport)
+                    .padding(horizontal = FamDimens.xs),
+            )
+        }
     }
 }
 

@@ -37,6 +37,11 @@ import com.famlog.core.designsystem.asString
 import com.famlog.core.designsystem.component.FamTopBar
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
+import com.famlog.core.model.ReportTarget
+import com.famlog.core.model.ReportTargetType
+import com.famlog.feature.report.ReportSheet
+import com.famlog.feature.report.ReportViewModel
+import com.famlog.feature.report.sheetActions
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
@@ -49,6 +54,7 @@ fun CandidateInboxScreen(
     onBack: () -> Unit,
     onOpenOriginal: (candidateId: Long) -> Unit,
     viewModel: CandidateInboxViewModel = hiltViewModel(),
+    reportViewModel: ReportViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -62,8 +68,17 @@ fun CandidateInboxScreen(
             }
         }
     }
+    val reportSheet by reportViewModel.sheet.collectAsStateWithLifecycle()
+    LaunchedEffect(reportViewModel) {
+        reportViewModel.events.collect { snackbarHostState.showSnackbar(it.asString(context)) }
+    }
     val actions = viewModel.actions
-    val cardActions = remember(actions) { actions.cardActions().copy(onShowEvidence = { onOpenOriginal(it.id) }) }
+    val cardActions = remember(actions, reportViewModel) {
+        actions.cardActions().copy(
+            onShowEvidence = { onOpenOriginal(it.id) },
+            onReport = { reportViewModel.open(ReportTarget(ReportTargetType.AI_OUTPUT, it.id)) },
+        )
+    }
     CandidateInboxContent(
         state = state,
         onBack = onBack,
@@ -72,6 +87,9 @@ fun CandidateInboxScreen(
         cardActions = cardActions,
         snackbarHostState = snackbarHostState,
     )
+    reportSheet?.let { sheet ->
+        ReportSheet(state = sheet, actions = remember(reportViewModel) { reportViewModel.sheetActions() })
+    }
     state.sheet?.let { sheet ->
         CandidateSheetDialog(
             sheet = sheet,
@@ -171,6 +189,7 @@ fun CandidateInboxContent(
                         onEdit = { cardActions.onEdit(candidate) },
                         onDismiss = { cardActions.onDismiss(candidate, it) },
                         onShowEvidence = { cardActions.onShowEvidence(candidate) },
+                        onReport = { cardActions.onReport(candidate) },
                         viewer = state.viewer,
                         pickedTarget = state.picks[candidate.id],
                         onPickTarget = { cardActions.onPickTarget(candidate, it) },

@@ -278,10 +278,6 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     /** 신고 API는 S20 (MOD-01). 지금은 자리만 */
-    fun report() {
-        viewModelScope.launch { _events.send(ChatRoomEvent.Message(UiText.Res(R.string.chat_report_coming))) }
-    }
-
     /** 서랍의 [가족 초대하기] (그룹장·관리자, GRP-02) */
     fun invite() {
         if (local.value.inviting) return
