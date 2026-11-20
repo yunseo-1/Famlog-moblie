@@ -11,6 +11,7 @@ import com.famlog.core.model.CandidateResolved
 import com.famlog.core.model.CandidateStatus
 import com.famlog.core.model.CandidateSurface
 import com.famlog.core.model.CandidateType
+import com.famlog.core.model.ItemSource
 import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.PlaceOption
 import kotlinx.serialization.Serializable
@@ -116,6 +117,12 @@ data class CandidateDetailResponse(val candidate: CandidateResponse, val evidenc
 
 @Serializable
 data class DecisionResponse(val candidate: CandidateResponse)
+
+/** 채팅에서 등록한 항목의 원문 (일정·할 일·장소 응답의 source, ARC-06). [candidateId]는 백엔드가 붙이면 온다 */
+@Serializable
+data class SourceResponse(val messageId: Long, val seq: Long, val candidateId: Long? = null)
+
+fun SourceResponse.toModel() = ItemSource(messageId, seq, candidateId)
 
 /** WebSocket candidate.resolved */
 @Serializable

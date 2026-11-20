@@ -423,4 +423,14 @@
     <string name="candidate_field_review">한줄평</string>
     <string name="candidate_field_review_hint">예: 칼국수가 정말 맛있음</string>
     <string name="candidate_cancel">취소</string>
+
+    <!-- 제안함 (SCR-14), 원문 보기 (ARC-06) -->
+    <string name="candidate_inbox_title">제안함</string>
+    <string name="candidate_inbox_open">제안함 열기, 대기 중인 AI 제안 %1$s개</string>
+    <string name="candidate_inbox_badge_more">%1$d+</string>
+    <string name="candidate_inbox_guide">AI가 대화에서 찾은 일정·할 일·장소 제안이에요. 등록하기 전에는 저장되지 않아요.</string>
+    <string name="candidate_inbox_empty">대기 중인 AI 제안이 없어요.</string>
+    <string name="candidate_inbox_failed">제안을 불러오지 못했어요.</string>
+    <string name="source_tag">채팅에서 등록</string>
+    <string name="source_open">원문 보기</string>
 </resources>

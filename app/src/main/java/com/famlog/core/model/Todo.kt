@@ -15,6 +15,8 @@ data class Todo(
     val doneBy: Long?,
     val createdBy: Long?,
     val version: Long,
+    /** 채팅에서 등록한 할 일이면 원문 (ARC-06) */
+    val source: ItemSource? = null,
 )
 
 /** 할 일 목록 한 페이지. [nextCursor]가 있으면 더 있다 */

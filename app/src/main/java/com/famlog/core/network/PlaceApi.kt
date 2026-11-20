@@ -175,6 +175,7 @@ data class PlaceResponse(
     val sharedBy: Long? = null,
     val marks: PlaceMarksResponse = PlaceMarksResponse(),
     val createdAt: String,
+    val source: SourceResponse? = null,
 )
 
 @Serializable
@@ -249,6 +250,7 @@ fun PlaceResponse.toModel() = Place(
     sharedBy = sharedBy,
     marks = marks.toModel(),
     createdAt = parseServerTime(createdAt),
+    source = source?.toModel(),
 )
 
 fun PlaceListResponse.toModel() = PlacePage(items.map { it.toModel() }, nextCursor)

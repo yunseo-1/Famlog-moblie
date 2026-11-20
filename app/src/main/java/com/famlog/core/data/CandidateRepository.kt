@@ -45,9 +45,40 @@ class CandidateRepository @Inject constructor(
     /** groupId → (candidateId → 후보) */
     private val store = MutableStateFlow<Map<Long, Map<Long, Candidate>>>(emptyMap())
 
+    /** groupId → 제안함 다음 쪽 커서 (없으면 끝까지 받았다) */
+    private val inboxCursors = MutableStateFlow<Map<Long, String?>>(emptyMap())
+
     /** 이 그룹 후보 (만료·무시·되돌린 것 포함, 화면이 상태로 거른다) */
     fun candidates(groupId: Long): Flow<List<Candidate>> =
         store.map { it[groupId]?.values?.toList().orEmpty() }.distinctUntilChanged()
+
+    /** 제안함(SCR-14)에 더 받을 쪽이 있는지. 아직 한 번도 안 받았으면 false */
+    fun inboxHasMore(groupId: Long): Flow<Boolean> = inboxCursors.map { it[groupId] != null }.distinctUntilChanged()
+
+    /**
+     * 제안함: 대기 후보(신뢰도 구간 무관, 만료 제외)를 최신 순으로 한 쪽씩 받는다. [more]면 다음 쪽.
+     * 첫 쪽을 다시 받으면 그 쪽 범위에서 응답에 없는 대기 후보(그새 처리됨)는 뺀다.
+     */
+    suspend fun loadInbox(groupId: Long, more: Boolean = false): ApiResult<Unit> {
+        val cursor = if (more) inboxCursors.value[groupId] ?: return ApiResult.Success(Unit) else null
+        val result = caller.call { api.list(groupId, INBOX_STATUS, cursor = cursor, size = PAGE_SIZE) }
+        if (result !is ApiResult.Success) return result.map { }
+        val page = result.value.toModel()
+        store.update { all ->
+            var group = all[groupId].orEmpty()
+            if (!more) {
+                // 첫 쪽보다 오래된 후보는 아직 모르므로 남긴다
+                val oldest = if (page.nextCursor == null) null else page.items.minOfOrNull { it.createdAt }
+                val ids = page.items.map { it.id }.toSet()
+                group = group.filterValues { c ->
+                    c.status != CandidateStatus.PENDING || c.id in ids || (oldest != null && c.createdAt < oldest)
+                }
+            }
+            all + (groupId to group + page.items.associateBy { it.id })
+        }
+        inboxCursors.update { it + (groupId to page.nextCursor) }
+        return ApiResult.Success(Unit)
+    }
 
     /**
      * 채팅방에 보이는 메시지 범위([fromSeq]~[toSeq], null이면 끝까지)의 대기·승인 후보를 끝까지 받는다.
@@ -118,6 +149,7 @@ class CandidateRepository @Inject constructor(
 
     fun clear() {
         store.value = emptyMap()
+        inboxCursors.value = emptyMap()
     }
 
     private suspend fun decide(block: suspend () -> CandidateResponse): ApiResult<Candidate> =
@@ -146,6 +178,7 @@ class CandidateRepository @Inject constructor(
 
     private companion object {
         const val CHAT_STATUSES = "PENDING,APPROVED"
+        const val INBOX_STATUS = "PENDING"
         const val PAGE_SIZE = 50
     }
 }

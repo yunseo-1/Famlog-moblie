@@ -23,7 +23,15 @@ import kotlinx.serialization.Serializable
 )
 
 /** SCR-11 그룹 채팅방. 하단 탭 없이 전체 화면 */
-@Serializable data class ChatRoomRoute(val groupId: Long)
+@Serializable data class ChatRoomRoute(
+    val groupId: Long,
+    /** 원문 보기(ARC-06)로 들어오면 그 메시지로 가서 강조한다. [focusCandidateId]가 있으면 추출 부분까지 */
+    val focusSeq: Long? = null,
+    val focusCandidateId: Long? = null,
+)
+
+/** SCR-14 제안함 (채팅방 앱바 sparkle) */
+@Serializable data class CandidateInboxRoute(val groupId: Long)
 
 /** 사진·동영상 전체 화면 (CHAT-05) */
 @Serializable data class MediaViewerRoute(val groupId: Long, val messageId: Long, val index: Int)

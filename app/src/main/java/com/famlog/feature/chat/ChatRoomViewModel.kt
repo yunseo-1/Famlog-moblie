@@ -215,7 +215,7 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     /**
-     * 근거 메시지로 가서 [spans](메시지 ID → 추출 부분)를 잠시 강조한다.
+     * 근거 메시지로 가서 [spans](메시지 ID → 추출 부분)를 잠시 강조한다. 비었으면 그 메시지 전체를 강조한다.
      * 아직 안 받은 옛 메시지면 이전 메시지를 이어 받는다 (최대 [MAX_FOCUS_PAGES]쪽).
      */
     fun focus(seq: Long, spans: Map<Long, List<String>>) {
@@ -236,7 +236,13 @@ class ChatRoomViewModel @Inject constructor(
                 _events.send(ChatRoomEvent.Message(UiText.Res(R.string.candidate_evidence_missing)))
                 return@launch
             }
-            local.update { it.copy(highlights = spans) }
+            // 추출 부분을 모르면(일정·할 일·장소의 원문 보기에 후보 ID가 없을 때) 원문 전체를 칠한다
+            val marks = if (spans.values.any { list -> list.any(String::isNotBlank) }) {
+                spans
+            } else {
+                target.id?.let { mapOf(it to listOfNotNull(target.body)) }.orEmpty()
+            }
+            local.update { it.copy(highlights = marks) }
             _events.send(ChatRoomEvent.ScrollTo(target.key))
             delay(HIGHLIGHT_MS)
             local.update { it.copy(highlights = emptyMap()) }

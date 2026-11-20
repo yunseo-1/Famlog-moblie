@@ -255,6 +255,41 @@ class CandidateRepositoryTest {
         assertEquals(1, repository.candidates(GROUP).first().size)
     }
 
+    @Test
+    fun 제안함은_대기_후보를_한_쪽씩_받고_더_있는지_알려준다() = runTest {
+        server.enqueue(jsonResponse("""{"items":[${todo(id = 2, seq = 12)}],"nextCursor":"c2"}"""))
+        server.enqueue(jsonResponse("""{"items":[${schedule(id = 1, seq = 30)}]}"""))
+
+        repository.loadInbox(GROUP)
+        assertTrue(repository.inboxHasMore(GROUP).first())
+        repository.loadInbox(GROUP, more = true)
+
+        server.takeRequest().requestUrl!!.let {
+            assertEquals("PENDING", it.queryParameter("status"))
+            assertNull(it.queryParameter("cursor"))
+            assertNull(it.queryParameter("fromSeq"))
+        }
+        assertEquals("c2", server.takeRequest().requestUrl!!.queryParameter("cursor"))
+        assertFalse(repository.inboxHasMore(GROUP).first())
+        assertEquals(setOf(1L, 2L), repository.candidates(GROUP).first().map { it.id }.toSet())
+        // 끝까지 받았으면 더 요청하지 않는다
+        repository.loadInbox(GROUP, more = true)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun 제안함_첫_쪽을_다시_받으면_그새_처리된_대기_후보는_빼고_승인한_칩은_남긴다() = runTest {
+        server.enqueue(jsonResponse("""{"items":[${schedule(id = 1, seq = 30)}, ${todo(id = 2, seq = 12)}]}"""))
+        server.enqueue(jsonResponse("""{"candidate":${schedule(id = 3, seq = 40, status = "APPROVED", extra = APPROVED_EXTRA)}}"""))
+        server.enqueue(jsonResponse("""{"items":[${todo(id = 2, seq = 12)}]}"""))
+
+        repository.loadInbox(GROUP)
+        repository.detail(3)
+        repository.loadInbox(GROUP)
+
+        assertEquals(setOf(2L, 3L), repository.candidates(GROUP).first().map { it.id }.toSet())
+    }
+
     private suspend fun loadOne(item: String) = run {
         server.enqueue(jsonResponse("""{"items":[$item]}"""))
         repository.loadForChat(GROUP, 1, null)

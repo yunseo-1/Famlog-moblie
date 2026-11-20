@@ -79,8 +79,10 @@ class CandidateViewModelTest {
     private val chat = mockk<ChatRepository>(relaxed = true) { every { messages(GROUP) } returns messages }
 
     private val store = MutableStateFlow<List<Candidate>>(emptyList())
+    private val inboxMore = MutableStateFlow(false)
     private val candidates = mockk<CandidateRepository>(relaxed = true) {
         every { candidates(GROUP) } returns store
+        every { inboxHasMore(GROUP) } returns inboxMore
         coEvery { loadForChat(any(), any(), any()) } returns ApiResult.Success(Unit)
     }
     private val places = mockk<PlaceRepository>(relaxed = true)
@@ -108,6 +110,24 @@ class CandidateViewModelTest {
     }
 
     @Test
+    fun 제안함_배지는_신뢰도와_상관없이_만료_전_대기_후보_수이고_더_있으면_표시한다() = runTest(mainRule.dispatcher) {
+        store.value = listOf(
+            schedule(1),
+            schedule(2).copy(surface = CandidateSurface.INBOX),
+            schedule(3).copy(expiresAt = clock.instant().minusSeconds(1)),
+            schedule(4).copy(status = CandidateStatus.APPROVED, decidedBy = MOM),
+        )
+        val viewModel = started()
+
+        coVerify { candidates.loadInbox(GROUP) }
+        assertEquals(2, viewModel.uiState.value.pending)
+        assertFalse(viewModel.uiState.value.pendingMore)
+
+        inboxMore.value = true
+        assertTrue(viewModel.uiState.value.pendingMore)
+    }
+
+    @Test
     fun 받아_둔_가장_오래된_메시지부터_받고_이전_메시지를_더_받으면_그_범위만_받는다() = runTest(mainRule.dispatcher) {
         started()
         coVerify { candidates.loadForChat(GROUP, 10, null) }
@@ -126,7 +146,7 @@ class CandidateViewModelTest {
         coEvery { candidates.approve(candidate, null) } returns ApiResult.Success(candidate.copy(status = CandidateStatus.APPROVED))
         val viewModel = started()
 
-        viewModel.approve(candidate)
+        viewModel.actions.approve(candidate)
 
         coVerify(exactly = 1) { candidates.approve(candidate, null) }
         assertTrue(viewModel.uiState.value.busy.isEmpty())
@@ -141,7 +161,7 @@ class CandidateViewModelTest {
         coEvery { candidates.detail(candidate.id) } returns ApiResult.Success(CandidateDetail(candidate, listOf(evidence(MOM))))
         val viewModel = started()
 
-        viewModel.approve(candidate)
+        viewModel.actions.approve(candidate)
 
         val sheet = viewModel.uiState.value.sheet!!
         assertEquals(setOf("assigneeIds"), sheet.serverMissing)
@@ -160,7 +180,7 @@ class CandidateViewModelTest {
         val viewModel = started()
 
         viewModel.events.test {
-            viewModel.approve(candidate)
+            viewModel.actions.approve(candidate)
             assertEquals(CandidateEvent.Message(UiText.Plain("엄마님이 먼저 등록했어요.")), awaitItem())
         }
         coVerify { candidates.detail(candidate.id) }
@@ -174,7 +194,7 @@ class CandidateViewModelTest {
         val viewModel = started()
 
         viewModel.events.test {
-            viewModel.dismiss(candidate, DismissReason.WRONG)
+            viewModel.actions.dismiss(candidate, DismissReason.WRONG)
             assertEquals(CandidateEvent.Message(UiText.Res(R.string.candidate_changed)), awaitItem())
         }
         coVerify { candidates.dismiss(candidate, DismissReason.WRONG) }
@@ -207,13 +227,13 @@ class CandidateViewModelTest {
             ApiResult.Success(candidate.copy(status = CandidateStatus.APPROVED))
         val viewModel = started()
 
-        viewModel.edit(candidate)
+        viewModel.actions.edit(candidate)
         val form = viewModel.uiState.value.sheet!!.form as CandidateForm.Schedule
         // 가족 전체(추정)는 지금 가족 모두로 채운다
         assertEquals(setOf(ME, MOM, DAD), form.participantIds)
-        viewModel.onStartTimeChange(LocalTime.NOON)
-        viewModel.toggleParticipant(DAD)
-        viewModel.submitSheet()
+        viewModel.actions.onStartTimeChange(LocalTime.NOON)
+        viewModel.actions.toggleParticipant(DAD)
+        viewModel.actions.submitSheet()
 
         val draft = (approval.captured as CandidateApproval.Schedule).draft
         assertEquals(Instant.parse("2026-11-14T03:00:00Z"), draft.startsAt)
@@ -231,9 +251,9 @@ class CandidateViewModelTest {
         coEvery { candidates.detail(candidate.id) } returns ApiResult.Success(CandidateDetail(candidate, emptyList()))
         val viewModel = started()
 
-        viewModel.edit(candidate)
-        viewModel.onTitleChange("   ")
-        viewModel.submitSheet()
+        viewModel.actions.edit(candidate)
+        viewModel.actions.onTitleChange("   ")
+        viewModel.actions.submitSheet()
 
         val sheet = viewModel.uiState.value.sheet!!
         assertEquals(setOf("title", "date"), sheet.errors)
@@ -257,14 +277,14 @@ class CandidateViewModelTest {
         coEvery { candidates.approve(candidate, capture(approval)) } returns ApiResult.Success(candidate.copy(status = CandidateStatus.APPROVED))
         val viewModel = started()
 
-        viewModel.edit(candidate)
+        viewModel.actions.edit(candidate)
         assertFalse(viewModel.uiState.value.sheet!!.canSubmit)
-        viewModel.onQueryChange("잠실 칼국수")
-        viewModel.searchPlace()
+        viewModel.actions.onQueryChange("잠실 칼국수")
+        viewModel.actions.searchPlace()
         val found = (viewModel.uiState.value.sheet!!.form as CandidateForm.Place).results.single()
-        viewModel.onPlaceSelect(found)
-        viewModel.onReviewChange("국물이 진함")
-        viewModel.submitSheet()
+        viewModel.actions.onPlaceSelect(found)
+        viewModel.actions.onReviewChange("국물이 진함")
+        viewModel.actions.submitSheet()
 
         assertEquals(CandidateApproval.Place("k-9", PlaceCategory.RESTAURANT, "국물이 진함"), approval.captured)
     }
@@ -278,8 +298,25 @@ class CandidateViewModelTest {
         val viewModel = started()
 
         viewModel.events.test {
-            viewModel.showEvidence(candidate)
+            viewModel.actions.showEvidence(candidate)
             assertEquals(CandidateEvent.ShowEvidence(28, mapOf(ANCHOR to listOf("11시"), 77L to listOf("토요일"))), awaitItem())
+        }
+    }
+
+    @Test
+    fun 원문_보기는_원문_위치의_근거로_가고_후보를_못_받으면_그_메시지_전체를_강조한다() = runTest(mainRule.dispatcher) {
+        val candidate = schedule(1)
+        coEvery { candidates.detail(1) } returns ApiResult.Success(
+            CandidateDetail(candidate, listOf(evidence(MOM, seq = 28, id = 77, spans = listOf("토요일")), evidence(MOM, seq = 30, spans = listOf("11시")))),
+        )
+        coEvery { candidates.detail(2) } returns ApiResult.Failure(404, ApiError(ErrorCodes.NOT_FOUND, "없음", null))
+        val viewModel = started()
+
+        viewModel.events.test {
+            viewModel.actions.showEvidenceOf(1, fallbackSeq = 30)
+            assertEquals(CandidateEvent.ShowEvidence(30, mapOf(77L to listOf("토요일"), ANCHOR to listOf("11시"))), awaitItem())
+            viewModel.actions.showEvidenceOf(2, fallbackSeq = 45)
+            assertEquals(CandidateEvent.ShowEvidence(45, emptyMap()), awaitItem())
         }
     }
 
@@ -293,7 +330,7 @@ class CandidateViewModelTest {
         val viewModel = started()
 
         viewModel.events.test {
-            viewModel.openEntity(approved)
+            viewModel.actions.openEntity(approved)
             assertEquals(CandidateEvent.OpenEntity(CandidateEntity.SCHEDULE, 55), awaitItem())
         }
     }

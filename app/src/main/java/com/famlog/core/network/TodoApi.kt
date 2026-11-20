@@ -60,6 +60,7 @@ data class TodoResponse(
     val doneBy: Long? = null,
     val createdBy: Long? = null,
     val version: Long,
+    val source: SourceResponse? = null,
 )
 
 @Serializable
@@ -76,6 +77,7 @@ fun TodoResponse.toModel() = Todo(
     doneBy = doneBy,
     createdBy = createdBy,
     version = version,
+    source = source?.toModel(),
 )
 
 fun TodoListResponse.toModel() = TodoPage(items.map { it.toModel() }, nextCursor)
