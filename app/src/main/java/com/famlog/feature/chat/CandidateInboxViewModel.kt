@@ -7,6 +7,7 @@ import com.famlog.core.data.CandidateRepository
 import com.famlog.core.data.ChatRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.PlaceRepository
+import com.famlog.core.datastore.SessionStore
 import com.famlog.core.model.ApiResult
 import com.famlog.core.model.Candidate
 import com.famlog.core.model.ChatMessage
@@ -39,6 +40,8 @@ data class CandidateInboxUiState(
     val loadFailed: Boolean = false,
     val loadingMore: Boolean = false,
     val hasMore: Boolean = false,
+    val viewer: CandidateViewer = CandidateViewer(),
+    val picks: Map<Long, Long> = emptyMap(),
 )
 
 /** SCR-14 제안함: 대기 중인 후보 전체 (채팅방 카드로 안 뜬 낮은 신뢰도 포함) */
@@ -49,6 +52,7 @@ class CandidateInboxViewModel @Inject constructor(
     chatRepository: ChatRepository,
     groupRepository: GroupRepository,
     placeRepository: PlaceRepository,
+    sessionStore: SessionStore,
     clock: Clock,
 ) : ViewModel() {
 
@@ -71,7 +75,11 @@ class CandidateInboxViewModel @Inject constructor(
 
     private val members: Flow<List<Member>> = groupRepository.details.map { it[groupId]?.members.orEmpty() }.distinctUntilChanged()
 
-    private val actionState = combine(actions.sheetState, actions.busyState) { sheet, busy -> sheet to busy }
+    private val myUserId = MutableStateFlow<Long?>(null)
+    private val viewer: Flow<CandidateViewer> =
+        combine(myUserId, groupRepository.myRole(groupId)) { me, role -> CandidateViewer(me, role) }
+
+    private val actionState = combine(actions.actionState(), viewer) { action, viewer -> action to viewer }
 
     val uiState: StateFlow<CandidateInboxUiState> = combine(
         items,
@@ -79,22 +87,25 @@ class CandidateInboxViewModel @Inject constructor(
         members,
         actionState,
         combine(load, candidateRepository.inboxHasMore(groupId)) { load, more -> load to more },
-    ) { (list, today), anchors, members, (sheet, busy), (load, more) ->
+    ) { (list, today), anchors, members, (action, viewer), (load, more) ->
         CandidateInboxUiState(
             items = list,
             anchors = anchors,
             members = members,
-            busy = busy,
-            sheet = sheet,
+            busy = action.busy,
+            sheet = action.sheet,
             today = today,
             loading = load.loading && list.isEmpty(),
             loadFailed = load.failed,
             loadingMore = load.loadingMore,
             hasMore = more,
+            viewer = viewer,
+            picks = action.picks,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CandidateInboxUiState())
 
     init {
+        viewModelScope.launch { myUserId.value = sessionStore.userId() }
         refresh()
     }
 

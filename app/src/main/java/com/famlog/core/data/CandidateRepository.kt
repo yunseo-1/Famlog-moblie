@@ -115,6 +115,7 @@ class CandidateRepository @Inject constructor(
             place = (approval as? CandidateApproval.Place)?.let {
                 ApprovePlaceRequest(it.kakaoPlaceId, it.category.name, it.oneLineReview?.trim()?.takeIf(String::isNotEmpty))
             },
+            targetId = (approval as? CandidateApproval.Target)?.targetId,
         )
         return decide { api.approve(candidate.id, body).candidate }
     }

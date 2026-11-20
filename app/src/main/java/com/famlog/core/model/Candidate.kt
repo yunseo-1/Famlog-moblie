@@ -50,6 +50,8 @@ data class Candidate(
     val linkedExisting: Boolean = false,
     val expiresAt: Instant? = null,
     val createdAt: Instant,
+    /** 기존 일정 변경·할 일 완료 후보의 대상. 새 항목 후보는 null */
+    val target: CandidateTarget? = null,
 ) {
     fun isInferred(key: String): Boolean = key in inferred
 
@@ -162,9 +164,48 @@ data class CandidateResolved(
  */
 data class ItemSource(val messageId: Long, val seq: Long, val candidateId: Long? = null)
 
+enum class TargetAction { CHANGE, COMPLETE }
+
+/**
+ * 기존 항목 변경·완료 후보의 대상 ("11시 말고 12시로 하자" → 그 일정, "세제 샀어" → 그 할 일).
+ * 서버가 그룹의 기존 항목에서 찾는다. 여럿(최대 5)이면 [item]이 null이고 [choices]에서 고른다.
+ */
+data class CandidateTarget(
+    val entityType: CandidateEntity,
+    val action: TargetAction,
+    val item: TargetItem?,
+    val choices: List<TargetItem>,
+) {
+    /** 대상이 정해졌으면 그것, 아니면 고른 것 */
+    fun resolve(pickedId: Long?): TargetItem? = item ?: choices.firstOrNull { it.entityId == pickedId }
+
+    /** 일정 변경은 등록한 사람·관리자 이상만 (서버도 403으로 막는다). 할 일 완료는 구성원 누구나 */
+    fun allows(item: TargetItem, me: Long?, role: GroupRole): Boolean =
+        action == TargetAction.COMPLETE || role != GroupRole.MEMBER || item.createdBy == null || item.createdBy == me
+}
+
+/**
+ * 대상 항목. 일정은 [before]·[after](바꾸기 전·후 시각), 할 일은 [dueDate]·[assigneeId](지금 값)
+ */
+data class TargetItem(
+    val entityId: Long,
+    val title: String?,
+    val createdBy: Long? = null,
+    val before: ScheduleTiming? = null,
+    val after: ScheduleTiming? = null,
+    val dueDate: LocalDate? = null,
+    val assigneeId: Long? = null,
+)
+
+/** 일정 날짜·시각 (서울). 종일이면 시각이 null */
+data class ScheduleTiming(val date: LocalDate, val startTime: LocalTime?, val endTime: LocalTime?, val allDay: Boolean)
+
 /** 수정 시트(SCR-13)에서 고친 값. 유형에 맞는 것 하나만 보낸다 */
 sealed interface CandidateApproval {
     data class Schedule(val draft: ScheduleDraft) : CandidateApproval
     data class Todo(val title: String, val assigneeId: Long?, val dueDate: LocalDate?) : CandidateApproval
     data class Place(val kakaoPlaceId: String, val category: PlaceCategory, val oneLineReview: String?) : CandidateApproval
+
+    /** 변경·완료 후보: 값은 보내지 않고, 대상이 여럿이면 고른 것 */
+    data class Target(val targetId: Long?) : CandidateApproval
 }

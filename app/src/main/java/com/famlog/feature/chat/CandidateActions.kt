@@ -8,6 +8,7 @@ import com.famlog.core.designsystem.UiText
 import com.famlog.core.designsystem.toUiText
 import com.famlog.core.model.ApiResult
 import com.famlog.core.model.Candidate
+import com.famlog.core.model.CandidateApproval
 import com.famlog.core.model.CandidateEntity
 import com.famlog.core.model.CandidateEvidence
 import com.famlog.core.model.CandidateStatus
@@ -16,6 +17,7 @@ import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.Member
 import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.PlaceOption
+import com.famlog.core.model.TargetAction
 import com.famlog.core.model.errorCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -71,6 +73,7 @@ class CandidateActions(
 ) {
     private val sheet = MutableStateFlow<CandidateSheet?>(null)
     private val busy = MutableStateFlow<Set<Long>>(emptySet())
+    private val picks = MutableStateFlow<Map<Long, Long>>(emptyMap())
 
     /** 열린 수정 시트 */
     val sheetState: StateFlow<CandidateSheet?> = sheet.asStateFlow()
@@ -78,13 +81,42 @@ class CandidateActions(
     /** 처리 중인 후보 (버튼을 막는다) */
     val busyState: StateFlow<Set<Long>> = busy.asStateFlow()
 
+    /** 변경·완료 후보에서 고른 대상 (후보 ID → entityId). 대상이 여럿일 때만 */
+    val pickState: StateFlow<Map<Long, Long>> = picks.asStateFlow()
+
     private val _events = Channel<CandidateEvent>(Channel.BUFFERED)
     val events: Flow<CandidateEvent> = _events.receiveAsFlow()
 
     private var searchJob: Job? = null
 
     /** [등록]: 후보 값 그대로. 채울 칸이 있으면 서버가 422 → 시트를 연다 */
-    fun approve(candidate: Candidate) = act(candidate) {
+    fun approve(candidate: Candidate) {
+        if (candidate.target != null) return approveTarget(candidate)
+        approveNew(candidate)
+    }
+
+    /** 대상이 여럿인 변경·완료 후보에서 하나를 고른다 */
+    fun pickTarget(candidate: Candidate, entityId: Long) {
+        if (candidate.target?.choices?.any { it.entityId == entityId } != true) return
+        picks.update { it + (candidate.id to entityId) }
+    }
+
+    /**
+     * [바꾸기]·[완료]: 값은 보내지 않고 고른 대상만. 권한이 없거나(403) 그사이 대상이 바뀌면(409 CANDIDATE_TARGET_CHANGED)
+     * 후보는 PENDING 그대로라 카드를 남기고 서버 문구만 보인다
+     */
+    private fun approveTarget(candidate: Candidate) {
+        val target = candidate.target ?: return
+        val picked = picks.value[candidate.id]
+        if (target.resolve(picked) == null) return
+        act(candidate) {
+            val result = candidateRepository.approve(candidate, CandidateApproval.Target(picked.takeIf { target.item == null }))
+            if (result is ApiResult.Success) picks.update { it - candidate.id }
+            handle(candidate, result)
+        }
+    }
+
+    private fun approveNew(candidate: Candidate) = act(candidate) {
         val result = candidateRepository.approve(candidate, approval = null)
         if (result.errorCode == ErrorCodes.CANDIDATE_MISSING_FIELDS) {
             val fields = (result as ApiResult.Failure).error?.fields.orEmpty().toSet()
@@ -101,7 +133,12 @@ class CandidateActions(
     fun undo(candidate: Candidate) = act(candidate) {
         val result = candidateRepository.undo(candidate)
         if (result is ApiResult.Success) {
-            _events.send(CandidateEvent.Message(UiText.Res(R.string.candidate_undone)))
+            val message = when (candidate.target?.action) {
+                TargetAction.CHANGE -> R.string.candidate_undone_change
+                TargetAction.COMPLETE -> R.string.candidate_undone_complete
+                null -> R.string.candidate_undone
+            }
+            _events.send(CandidateEvent.Message(UiText.Res(message)))
         } else {
             handle(candidate, result)
         }
@@ -139,7 +176,10 @@ class CandidateActions(
 
     // ---- 수정 시트 (SCR-13) ----
 
-    fun edit(candidate: Candidate) = openSheet(candidate, emptySet())
+    /** 변경·완료 후보는 승인 전에 값을 고칠 수 없다 (v1.1) */
+    fun edit(candidate: Candidate) {
+        if (candidate.target == null) openSheet(candidate, emptySet())
+    }
 
     fun closeSheet() {
         searchJob?.cancel()
@@ -331,6 +371,7 @@ fun CandidateActions.cardActions() = CandidateCardActions(
     onUndo = ::undo,
     onOpen = ::openEntity,
     onShowEvidence = ::showEvidence,
+    onPickTarget = ::pickTarget,
 )
 
 /** 수정 시트 입력 → 이 처리기. 근거를 누르면 시트를 닫고 원문으로 간다 */

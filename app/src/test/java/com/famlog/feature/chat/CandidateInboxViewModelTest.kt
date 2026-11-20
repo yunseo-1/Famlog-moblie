@@ -23,6 +23,7 @@ import com.famlog.core.model.GroupSummary
 import com.famlog.core.model.Member
 import com.famlog.core.model.MessageType
 import com.famlog.core.model.SendState
+import com.famlog.testing.FakeSessionStore
 import com.famlog.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -67,7 +68,8 @@ class CandidateInboxViewModelTest {
     }
 
     private fun viewModel() = CandidateInboxViewModel(
-        SavedStateHandle(mapOf("groupId" to GROUP)), candidates, chat, groups, mockk<PlaceRepository>(relaxed = true), clock,
+        SavedStateHandle(mapOf("groupId" to GROUP)), candidates, chat, groups, mockk<PlaceRepository>(relaxed = true),
+        FakeSessionStore(userId = MOM), clock,
     )
 
     private fun TestScope.started(): CandidateInboxViewModel = viewModel().also { vm ->

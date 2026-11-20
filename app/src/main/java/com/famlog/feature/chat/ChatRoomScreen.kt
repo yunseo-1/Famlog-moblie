@@ -445,6 +445,8 @@ data class CandidateCardActions(
     val onUndo: (Candidate) -> Unit = {},
     val onOpen: (Candidate) -> Unit = {},
     val onShowEvidence: (Candidate) -> Unit = {},
+    /** 변경·완료 후보: 대상이 여럿이면 고른다 */
+    val onPickTarget: (Candidate, Long) -> Unit = { _, _ -> },
 )
 
 @Composable
@@ -469,6 +471,9 @@ private fun CandidateItem(candidate: Candidate, anchor: ChatMessage, candidates:
             onEdit = { actions.onEdit(candidate) },
             onDismiss = { actions.onDismiss(candidate, it) },
             onShowEvidence = { actions.onShowEvidence(candidate) },
+            viewer = candidates.viewer,
+            pickedTarget = candidates.picks[candidate.id],
+            onPickTarget = { actions.onPickTarget(candidate, it) },
         )
     }
 }

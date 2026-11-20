@@ -46,6 +46,10 @@ data class CandidateUiState(
     /** 제안함 배지: 받아 둔 대기 후보 수. [pendingMore]면 "N+" */
     val pending: Int = 0,
     val pendingMore: Boolean = false,
+    /** 변경 후보의 [바꾸기]를 보일지 (내가 등록한 일정·관리자 이상) */
+    val viewer: CandidateViewer = CandidateViewer(),
+    /** 대상이 여럿인 변경·완료 후보에서 고른 대상 */
+    val picks: Map<Long, Long> = emptyMap(),
 ) {
     fun nameOf(userId: Long?): String? = userId?.let { id -> members.firstOrNull { it.userId == id }?.displayName }
 }
@@ -72,15 +76,14 @@ class CandidateViewModel @Inject constructor(
     private val ticker: Flow<Instant> = candidateTicker(clock)
 
     private val members: Flow<List<Member>> = groupRepository.details.map { it[groupId]?.members.orEmpty() }.distinctUntilChanged()
-    private val myRole: Flow<GroupRole> = combine(groupRepository.groups, groupRepository.details) { groups, details ->
-        groups.firstOrNull { it.id == groupId }?.myRole ?: details[groupId]?.myRole ?: GroupRole.MEMBER
-    }.distinctUntilChanged()
+    private val myRole: Flow<GroupRole> = groupRepository.myRole(groupId)
 
     private data class Cards(
         val byAnchor: Map<Long, List<Candidate>>,
         val undoable: Set<Long>,
         val pending: Int,
         val now: Instant,
+        val viewer: CandidateViewer,
     )
 
     private val cards = combine(candidateRepository.candidates(groupId), ticker, myUserId, myRole) { list, now, me, role ->
@@ -90,25 +93,27 @@ class CandidateViewModel @Inject constructor(
             undoable = shown.filter { it.undoableBy(me, role, now) }.map { it.id }.toSet(),
             pending = list.count { it.waitingAt(now) },
             now = now,
+            viewer = CandidateViewer(me, role),
         )
     }
 
     val uiState: StateFlow<CandidateUiState> = combine(
         cards,
         members,
-        actions.sheetState,
-        actions.busyState,
+        actions.actionState(),
         candidateRepository.inboxHasMore(groupId),
-    ) { cards, members, sheet, busy, more ->
+    ) { cards, members, action, more ->
         CandidateUiState(
             byAnchor = cards.byAnchor,
             undoable = cards.undoable,
-            busy = busy,
+            busy = action.busy,
             members = members,
-            sheet = sheet,
+            sheet = action.sheet,
             today = cards.now.atZone(SeoulZone).toLocalDate(),
             pending = cards.pending,
             pendingMore = more,
+            viewer = cards.viewer,
+            picks = action.picks,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CandidateUiState())
 
@@ -162,6 +167,20 @@ class CandidateViewModel @Inject constructor(
         const val TICK_MS = 15_000L
     }
 }
+
+/** 카드를 보는 사람. 변경 후보의 권한 판단에 쓴다 */
+data class CandidateViewer(val userId: Long? = null, val role: GroupRole = GroupRole.MEMBER)
+
+/** 시트·처리 중·고른 대상 */
+internal data class CandidateActionState(val sheet: CandidateSheet?, val busy: Set<Long>, val picks: Map<Long, Long>)
+
+internal fun CandidateActions.actionState(): Flow<CandidateActionState> =
+    combine(sheetState, busyState, pickState) { sheet, busy, picks -> CandidateActionState(sheet, busy, picks) }
+
+/** 그룹에서 내 역할 (목록·상세 중 아는 쪽) */
+internal fun GroupRepository.myRole(groupId: Long): Flow<GroupRole> = combine(groups, details) { groups, details ->
+    groups.firstOrNull { it.id == groupId }?.myRole ?: details[groupId]?.myRole ?: GroupRole.MEMBER
+}.distinctUntilChanged()
 
 /** 대기 중이고 아직 만료 전 */
 internal fun Candidate.waitingAt(now: Instant): Boolean =
