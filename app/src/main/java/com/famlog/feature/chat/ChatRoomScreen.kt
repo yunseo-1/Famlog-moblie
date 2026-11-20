@@ -24,6 +24,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
@@ -56,6 +58,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
@@ -91,6 +94,9 @@ fun ChatRoomScreen(
     onOpenMedia: (groupId: Long, messageId: Long, index: Int) -> Unit,
     onOpenPlace: (placeId: Long) -> Unit = {},
     onOpenSchedule: (scheduleId: Long) -> Unit = {},
+    onOpenInbox: () -> Unit = {},
+    focus: ChatFocus? = null,
+    onFocusHandled: () -> Unit = {},
     viewModel: ChatRoomViewModel = hiltViewModel(),
     candidateViewModel: CandidateViewModel = hiltViewModel(),
 ) {
@@ -116,6 +122,15 @@ fun ChatRoomScreen(
                 is ChatRoomEvent.ScrollTo -> scrollKey = event.key
             }
         }
+    }
+    // 원문 보기(ARC-06)·제안함에서 고른 후보: 후보를 알면 추출 부분까지, 아니면 그 메시지 전체를 강조한다
+    LaunchedEffect(focus) {
+        val target = focus ?: return@LaunchedEffect
+        when {
+            target.candidateId != null -> candidateViewModel.actions.showEvidenceOf(target.candidateId, fallbackSeq = target.seq)
+            target.seq != null -> viewModel.focus(target.seq, emptyMap())
+        }
+        onFocusHandled()
     }
     LaunchedEffect(candidateViewModel) {
         candidateViewModel.events.collect { event ->
@@ -154,16 +169,10 @@ fun ChatRoomScreen(
         onOpenMedia = { message, index -> message.id?.let { onOpenMedia(message.groupId, it, index) } },
         onOpenPlace = onOpenPlace,
         candidates = candidates,
-        candidateActions = CandidateCardActions(
-            onApprove = candidateViewModel::approve,
-            onEdit = candidateViewModel::edit,
-            onDismiss = candidateViewModel::dismiss,
-            onUndo = candidateViewModel::undo,
-            onOpen = candidateViewModel::openEntity,
-            onShowEvidence = candidateViewModel::showEvidence,
-        ),
+        candidateActions = remember(candidateViewModel) { candidateViewModel.actions.cardActions() },
         scrollKey = scrollKey,
         onScrolled = { scrollKey = null },
+        onOpenInbox = onOpenInbox,
     )
 
     candidates.sheet?.let { sheet ->
@@ -171,28 +180,7 @@ fun ChatRoomScreen(
             sheet = sheet,
             members = candidates.members,
             today = candidates.today,
-            actions = CandidateSheetActions(
-                onDismiss = candidateViewModel::closeSheet,
-                onSubmit = candidateViewModel::submitSheet,
-                onShowEvidence = { evidence ->
-                    candidateViewModel.closeSheet()
-                    candidateViewModel.showEvidence(evidence)
-                },
-                onTitleChange = candidateViewModel::onTitleChange,
-                onDateChange = candidateViewModel::onDateChange,
-                onClearDueDate = candidateViewModel::clearDueDate,
-                onAllDayChange = candidateViewModel::onAllDayChange,
-                onStartTimeChange = candidateViewModel::onStartTimeChange,
-                onEndTimeChange = candidateViewModel::onEndTimeChange,
-                onToggleParticipant = candidateViewModel::toggleParticipant,
-                onLocationChange = candidateViewModel::onLocationChange,
-                onAssigneeChange = candidateViewModel::onAssigneeChange,
-                onPlaceSelect = candidateViewModel::onPlaceSelect,
-                onCategoryChange = candidateViewModel::onCategoryChange,
-                onReviewChange = candidateViewModel::onReviewChange,
-                onQueryChange = candidateViewModel::onQueryChange,
-                onSearch = candidateViewModel::searchPlace,
-            ),
+            actions = remember(candidateViewModel) { candidateViewModel.actions.sheetActions() },
         )
     }
 
@@ -231,6 +219,7 @@ fun ChatRoomContent(
     candidateActions: CandidateCardActions = CandidateCardActions(),
     scrollKey: String? = null,
     onScrolled: () -> Unit = {},
+    onOpenInbox: (() -> Unit)? = null,
 ) {
     val colors = FamTheme.colors
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -260,6 +249,7 @@ fun ChatRoomContent(
                             title = stringResource(R.string.chat_room_title, state.groupName, state.memberCount),
                             modifier = Modifier.background(colors.bgDefault),
                             actions = {
+                                if (onOpenInbox != null) InboxButton(candidates.pending, candidates.pendingMore, onOpenInbox)
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(
                                         painter = painterResource(R.drawable.ic_menu),
@@ -419,6 +409,30 @@ private fun MessageRow(
             message.id?.let { candidates.byAnchor[it] }?.forEach { candidate ->
                 CandidateItem(candidate, message, candidates, candidateActions)
             }
+        }
+    }
+}
+
+/** 채팅방으로 원문 보기: [candidateId]를 알면 추출 부분까지, 모르면 [seq] 메시지 전체를 강조 */
+data class ChatFocus(val seq: Long? = null, val candidateId: Long? = null)
+
+/** 앱바 sparkle: 제안함(SCR-14) + 대기 후보 수 배지 (50개 넘게 남았으면 "50+") */
+@Composable
+private fun InboxButton(pending: Int, more: Boolean, onClick: () -> Unit) {
+    val colors = FamTheme.colors
+    val label = if (more) stringResource(R.string.candidate_inbox_badge_more, pending) else pending.toString()
+    val description = stringResource(R.string.candidate_inbox_open, label)
+    IconButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = description }) {
+        BadgedBox(
+            badge = {
+                if (pending > 0) {
+                    Badge(containerColor = colors.brandPrimary, contentColor = colors.textOnBrand) {
+                        Text(label, style = FamTheme.type.caption)
+                    }
+                }
+            },
+        ) {
+            Icon(painterResource(R.drawable.ic_sparkle), contentDescription = null, tint = colors.textPrimary)
         }
     }
 }

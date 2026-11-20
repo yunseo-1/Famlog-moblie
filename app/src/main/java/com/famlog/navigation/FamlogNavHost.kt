@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.famlog.R
 import com.famlog.core.data.StartDestination
+import com.famlog.core.model.ItemSource
 import com.famlog.core.designsystem.asString
 import com.famlog.core.designsystem.component.FamAppBar
 import com.famlog.core.designsystem.component.FamBottomNav
@@ -40,6 +41,8 @@ import com.famlog.feature.auth.LoginScreen
 import com.famlog.feature.calendar.CalendarScreen
 import com.famlog.feature.calendar.ScheduleDetailScreen
 import com.famlog.feature.calendar.ScheduleEditScreen
+import com.famlog.feature.chat.CandidateInboxScreen
+import com.famlog.feature.chat.ChatFocus
 import com.famlog.feature.chat.ChatRoomScreen
 import com.famlog.feature.chat.ChatScreen
 import com.famlog.feature.chat.MediaViewerScreen
@@ -144,7 +147,17 @@ fun FamlogNavHost(
                     onNewGroup = { navController.navigate(GroupStartRoute(canGoBack = true)) },
                 )
             }
-            composable<ChatRoomRoute> {
+            composable<ChatRoomRoute> { entry ->
+                val route = entry.toRoute<ChatRoomRoute>()
+                // 원문 보기로 들어온 위치는 한 번만, 제안함에서 고른 후보는 돌아올 때마다
+                var routeFocusDone by rememberSaveable { mutableStateOf(false) }
+                val picked by entry.savedStateHandle.getStateFlow<Long?>(FOCUS_CANDIDATE_KEY, null).collectAsStateWithLifecycle()
+                val focus = when {
+                    picked != null -> ChatFocus(candidateId = picked)
+                    !routeFocusDone && (route.focusSeq != null || route.focusCandidateId != null) ->
+                        ChatFocus(route.focusSeq, route.focusCandidateId)
+                    else -> null
+                }
                 ChatRoomScreen(
                     onBack = { navController.popBackStack() },
                     onOpenMedia = { groupId, messageId, index ->
@@ -152,6 +165,21 @@ fun FamlogNavHost(
                     },
                     onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
                     onOpenSchedule = { navController.navigate(ScheduleDetailRoute(it)) },
+                    onOpenInbox = { navController.navigate(CandidateInboxRoute(route.groupId)) },
+                    focus = focus,
+                    onFocusHandled = {
+                        routeFocusDone = true
+                        entry.savedStateHandle[FOCUS_CANDIDATE_KEY] = null
+                    },
+                )
+            }
+            composable<CandidateInboxRoute> {
+                CandidateInboxScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenOriginal = { candidateId ->
+                        navController.previousBackStackEntry?.savedStateHandle?.set(FOCUS_CANDIDATE_KEY, candidateId)
+                        navController.popBackStack()
+                    },
                 )
             }
             composable<MediaViewerRoute> { MediaViewerScreen(onClose = { navController.popBackStack() }) }
@@ -159,6 +187,7 @@ fun FamlogNavHost(
                 CalendarScreen(
                     onOpenSchedule = { navController.navigate(ScheduleDetailRoute(it)) },
                     onAddSchedule = { date -> navController.navigate(ScheduleEditRoute(date = date.toString())) },
+                    onOpenSource = navController::openSource,
                 )
             }
             composable<ScheduleDetailRoute> {
@@ -166,6 +195,7 @@ fun FamlogNavHost(
                     onBack = { navController.popBackStack() },
                     onEdit = { navController.navigate(ScheduleEditRoute(scheduleId = it)) },
                     onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
+                    onOpenSource = navController::openSource,
                 )
             }
             composable<ScheduleEditRoute> { entry ->
@@ -206,7 +236,9 @@ fun FamlogNavHost(
                     },
                 )
             }
-            composable<PlaceDetailRoute> { PlaceDetailScreen(onBack = { navController.popBackStack() }) }
+            composable<PlaceDetailRoute> {
+                PlaceDetailScreen(onBack = { navController.popBackStack() }, onOpenSource = navController::openSource)
+            }
             composable<AlbumRoute> { AlbumScreen() }
             composable<StoryRoute> { StoryScreen() }
         }
@@ -311,3 +343,11 @@ private fun NavHostController.navigateTo(destination: StartDestination) {
         launchSingleTop = true
     }
 }
+
+/** 일정·할 일·장소의 원문 보기 (ARC-06): 그 그룹 채팅방의 원문 메시지로 */
+private fun NavHostController.openSource(groupId: Long, source: ItemSource) {
+    navigate(ChatRoomRoute(groupId, focusSeq = source.seq, focusCandidateId = source.candidateId))
+}
+
+/** 제안함에서 [원문 보기]로 고른 후보를 채팅방에 넘기는 키. 라우트 인자(focusCandidateId)와 이름이 같으면 인자를 읽어 버린다 */
+private const val FOCUS_CANDIDATE_KEY = "inboxPickedCandidateId"

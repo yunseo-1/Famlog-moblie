@@ -76,6 +76,8 @@ data class Occurrence(
     val participantIds: List<Long>,
     val createdBy: Long?,
     val recurring: Boolean,
+    /** 채팅에서 등록한 일정이면 원문 (ARC-06) */
+    val source: ItemSource? = null,
 ) {
     fun covers(date: LocalDate): Boolean = !date.isBefore(startDate) && !date.isAfter(endDate)
 }
@@ -98,6 +100,8 @@ data class Schedule(
     val version: Long,
     /** 연결한 우리 그룹 장소. 장소가 지워지면 null */
     val place: PlaceSummary? = null,
+    /** 채팅에서 등록한 일정이면 원문 (ARC-06) */
+    val source: ItemSource? = null,
 ) {
     val repeat: Repeat? get() = Repeat.parse(rrule)
 }

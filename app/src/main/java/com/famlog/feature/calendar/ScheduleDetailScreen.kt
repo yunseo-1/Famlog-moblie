@@ -41,7 +41,10 @@ import com.famlog.core.designsystem.asString
 import com.famlog.core.designsystem.component.FamTopBar
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
+import com.famlog.core.model.CandidateType
+import com.famlog.core.model.ItemSource
 import com.famlog.core.model.Schedule
+import com.famlog.feature.chat.ChatSourceRow
 import com.famlog.feature.chat.SeoulZone
 import com.famlog.feature.place.PlaceRow
 import com.famlog.feature.place.labelRes
@@ -53,6 +56,7 @@ fun ScheduleDetailScreen(
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
     onOpenPlace: (Long) -> Unit = {},
+    onOpenSource: (groupId: Long, source: ItemSource) -> Unit = { _, _ -> },
     viewModel: ScheduleDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -72,6 +76,7 @@ fun ScheduleDetailScreen(
         onEdit = { onEdit(viewModel.scheduleId) },
         onDelete = viewModel::delete,
         onOpenPlace = onOpenPlace,
+        onOpenSource = onOpenSource,
         snackbarHostState = snackbarHostState,
     )
 }
@@ -84,6 +89,7 @@ fun ScheduleDetailContent(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onOpenPlace: (Long) -> Unit = {},
+    onOpenSource: (groupId: Long, source: ItemSource) -> Unit = { _, _ -> },
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val colors = FamTheme.colors
@@ -106,7 +112,7 @@ fun ScheduleDetailContent(
                     CircularProgressIndicator(color = colors.brandPrimary)
                 }
             } else {
-                ScheduleBody(schedule, state, onOpenPlace)
+                ScheduleBody(schedule, state, onOpenPlace, onOpenSource)
             }
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
@@ -141,7 +147,12 @@ fun ScheduleDetailContent(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ScheduleBody(schedule: Schedule, state: ScheduleDetailUiState, onOpenPlace: (Long) -> Unit) {
+private fun ScheduleBody(
+    schedule: Schedule,
+    state: ScheduleDetailUiState,
+    onOpenPlace: (Long) -> Unit,
+    onOpenSource: (groupId: Long, source: ItemSource) -> Unit,
+) {
     val colors = FamTheme.colors
     val today = LocalDate.now(SeoulZone)
     Column(
@@ -174,6 +185,10 @@ private fun ScheduleBody(schedule: Schedule, state: ScheduleDetailUiState, onOpe
             )
             schedule.repeat?.let { repeat ->
                 Text(repeat.describe(today), style = FamTheme.type.bodyMedium, color = colors.textSecondary)
+            }
+            // 채팅에서 등록한 일정: 원문 메시지로 (ARC-06)
+            schedule.source?.let { source ->
+                ChatSourceRow(CandidateType.SCHEDULE, onOpen = { onOpenSource(schedule.groupId, source) })
             }
         }
 

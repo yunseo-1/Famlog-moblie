@@ -48,6 +48,7 @@ data class OccurrenceResponse(
     val participantIds: List<Long> = emptyList(),
     val createdBy: Long? = null,
     val recurring: Boolean = false,
+    val source: SourceResponse? = null,
 )
 
 @Serializable
@@ -70,6 +71,7 @@ data class ScheduleResponse(
     val createdBy: Long? = null,
     val version: Long,
     val place: PlaceSummaryResponse? = null,
+    val source: SourceResponse? = null,
 )
 
 @Serializable
@@ -110,7 +112,9 @@ fun OccurrenceResponse.toModel(): Occurrence {
     val start = parseServerTime(startsAt)
     val end = parseServerTime(endsAt)
     val (startDay, endDay) = seoulDates(allDay, start, end, startDate, endDate)
-    return Occurrence(scheduleId, title, allDay, start, end, startDay, endDay, participantIds, createdBy, recurring)
+    return Occurrence(
+        scheduleId, title, allDay, start, end, startDay, endDay, participantIds, createdBy, recurring, source?.toModel(),
+    )
 }
 
 fun ScheduleResponse.toModel(): Schedule {
@@ -133,6 +137,7 @@ fun ScheduleResponse.toModel(): Schedule {
         createdBy = createdBy,
         version = version,
         place = place?.toModel(),
+        source = source?.toModel(),
     )
 }
 

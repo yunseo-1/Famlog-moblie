@@ -43,6 +43,8 @@ data class Place(
     val sharedBy: Long?,
     val marks: PlaceMarks,
     val createdAt: Instant,
+    /** 채팅에서 등록한 장소면 원문 (ARC-06) */
+    val source: ItemSource? = null,
 )
 
 /** 장소 목록 한 페이지. [nextCursor]가 있으면 더 있다 */

@@ -52,9 +52,12 @@ import com.famlog.core.designsystem.component.FamChip
 import com.famlog.core.designsystem.component.FamTopBar
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
+import com.famlog.core.model.CandidateType
+import com.famlog.core.model.ItemSource
 import com.famlog.core.model.Place
 import com.famlog.core.model.PlaceCategory
 import com.famlog.core.model.PlaceMarkKind
+import com.famlog.feature.chat.ChatSourceRow
 import com.famlog.feature.chat.SeoulZone
 import java.time.LocalDate
 
@@ -62,6 +65,7 @@ import java.time.LocalDate
 @Composable
 fun PlaceDetailScreen(
     onBack: () -> Unit,
+    onOpenSource: (groupId: Long, source: ItemSource) -> Unit = { _, _ -> },
     viewModel: PlaceDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -84,6 +88,7 @@ fun PlaceDetailScreen(
         onDelete = viewModel::delete,
         onCall = { phone -> openOrIgnore(context, Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) },
         onOpenUrl = { url -> openOrIgnore(context, Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
+        onOpenSource = onOpenSource,
         snackbarHostState = snackbarHostState,
     )
     state.editSheet?.let { sheet ->
@@ -119,6 +124,7 @@ fun PlaceDetailContent(
     onDelete: () -> Unit,
     onCall: (String) -> Unit,
     onOpenUrl: (String) -> Unit,
+    onOpenSource: (groupId: Long, source: ItemSource) -> Unit = { _, _ -> },
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val colors = FamTheme.colors
@@ -137,7 +143,7 @@ fun PlaceDetailContent(
             }
             val place = state.place
             when {
-                place != null -> PlaceBody(place, state, onToggleMark, onCall, onOpenUrl)
+                place != null -> PlaceBody(place, state, onToggleMark, onCall, onOpenUrl, onOpenSource)
                 state.missing -> Missing()
                 state.loadFailed -> Column(
                     Modifier.fillMaxSize().padding(FamDimens.screenPadding),
@@ -203,6 +209,7 @@ private fun PlaceBody(
     onToggleMark: (PlaceMarkKind) -> Unit,
     onCall: (String) -> Unit,
     onOpenUrl: (String) -> Unit,
+    onOpenSource: (groupId: Long, source: ItemSource) -> Unit,
 ) {
     val colors = FamTheme.colors
     Column(
@@ -220,6 +227,11 @@ private fun PlaceBody(
                 Text(meta, style = FamTheme.type.bodyMedium, color = colors.textSecondary)
             }
             place.rating?.let { RatingBadge(it) }
+        }
+
+        // 채팅에서 등록한 장소: 원문 메시지로 (ARC-06)
+        place.source?.let { source ->
+            ChatSourceRow(CandidateType.PLACE, onOpen = { onOpenSource(place.groupId, source) })
         }
 
         place.oneLineReview?.takeIf { it.isNotBlank() }?.let { review ->

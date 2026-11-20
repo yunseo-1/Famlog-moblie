@@ -156,6 +156,12 @@ data class CandidateResolved(
     val linkedExisting: Boolean,
 )
 
+/**
+ * 채팅에서 등록한 항목의 원문 (ARC-06). [candidateId]가 있으면 그 후보의 근거·추출 부분으로 강조하고,
+ * 없으면 [messageId] 메시지 전체를 강조한다.
+ */
+data class ItemSource(val messageId: Long, val seq: Long, val candidateId: Long? = null)
+
 /** 수정 시트(SCR-13)에서 고친 값. 유형에 맞는 것 하나만 보낸다 */
 sealed interface CandidateApproval {
     data class Schedule(val draft: ScheduleDraft) : CandidateApproval

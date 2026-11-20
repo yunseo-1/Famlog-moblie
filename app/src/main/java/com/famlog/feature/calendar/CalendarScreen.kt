@@ -48,9 +48,12 @@ import com.famlog.core.designsystem.component.FamChip
 import com.famlog.core.designsystem.component.FamSegmented
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
+import com.famlog.core.model.CandidateType
 import com.famlog.core.model.Holiday
+import com.famlog.core.model.ItemSource
 import com.famlog.core.model.Member
 import com.famlog.core.model.Occurrence
+import com.famlog.feature.chat.ChatSourceTag
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -63,6 +66,7 @@ fun CalendarScreen(
     onOpenSchedule: (Long) -> Unit,
     onAddSchedule: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenSource: (groupId: Long, source: ItemSource) -> Unit = { _, _ -> },
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -83,7 +87,7 @@ fun CalendarScreen(
         onOpenSchedule = onOpenSchedule,
         onAddSchedule = { onAddSchedule(state.selectedDate) },
         modifier = modifier,
-        todoContent = { TodoTab() },
+        todoContent = { TodoTab(onOpenSource = onOpenSource) },
     )
 }
 
@@ -435,6 +439,8 @@ private fun EventRow(occurrence: Occurrence, state: CalendarUiState, onClick: ()
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        // 후보 승인으로 생긴 일정만 (Figma 03 Event Row)
+        if (occurrence.source != null) ChatSourceTag(CandidateType.SCHEDULE)
     }
 }
 

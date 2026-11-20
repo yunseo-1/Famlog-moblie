@@ -175,6 +175,19 @@ class ChatRoomViewModelTest {
         assertTrue(viewModel.uiState.value.highlights.isEmpty())
     }
 
+    @Test
+    fun 추출_부분을_모르는_원문_보기는_그_메시지_전체를_강조한다() = runTest(mainRule.dispatcher) {
+        messages.value = listOf(message(40, OTHER), message(41, ME))
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+
+        viewModel.events.test {
+            viewModel.focus(40, emptyMap())
+            assertEquals(ChatRoomEvent.ScrollTo("k40"), awaitItem())
+        }
+        assertEquals(mapOf(40L to listOf("b40")), viewModel.uiState.value.highlights)
+    }
+
     private companion object {
         const val GROUP = 1L
         const val ME = 7L

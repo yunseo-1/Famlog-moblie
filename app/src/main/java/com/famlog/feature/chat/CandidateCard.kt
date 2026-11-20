@@ -64,11 +64,12 @@ import java.util.Locale
  * Figma AI Suggestion Card `4:80` (ARC-05). 근거 메시지 아래, 왼쪽 들여쓰기 40.
  * 헤더 · 제목 · 요약 · 추정 배지 · 근거 인용 · [등록][수정][무시] · "AI 제안".
  * [anchor]는 카드가 붙은 메시지(마지막 근거). 인용을 누르면 원문으로 가서 추출 부분을 강조한다.
+ * 제안함에서 근거 메시지를 아직 안 받았으면 [anchor]가 null이고 인용 없이 "원문 보기"만 보인다.
  */
 @Composable
 fun CandidateCard(
     candidate: Candidate,
-    anchor: ChatMessage,
+    anchor: ChatMessage?,
     members: List<Member>,
     busy: Boolean,
     onApprove: () -> Unit,
@@ -76,14 +77,15 @@ fun CandidateCard(
     onDismiss: (DismissReason?) -> Unit,
     onShowEvidence: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 채팅방은 아바타 폭만큼 들여 280까지, 제안함은 화면 너비 */
+    indent: Boolean = true,
 ) {
     val colors = FamTheme.colors
     val (accent, background) = colors.categoryOf(candidate.type)
     val nameOf = { id: Long? -> members.firstOrNull { it.userId == id }?.displayName }
     Column(
         modifier = modifier
-            .padding(start = FamDimens.chatIndent)
-            .widthIn(max = FamDimens.candidateCardWidth)
+            .then(if (indent) Modifier.padding(start = FamDimens.chatIndent).widthIn(max = FamDimens.candidateCardWidth) else Modifier)
             .fillMaxWidth()
             .background(background, RoundedCornerShape(FamDimens.radiusLg))
             .border(1.dp, accent, RoundedCornerShape(FamDimens.radiusLg))
@@ -109,12 +111,16 @@ fun CandidateCard(
         }
         inferredText(candidate)?.let { text -> InferredRow(text) }
         Evidence(
-            quote = anchor.body.orEmpty(),
-            meta = stringResource(
-                R.string.candidate_evidence_meta,
-                nameOf(anchor.senderId) ?: stringResource(R.string.chat_unknown_member),
-                formatTime(anchor.sentAt),
-            ),
+            quote = anchor?.body,
+            meta = if (anchor != null) {
+                stringResource(
+                    R.string.candidate_evidence_meta,
+                    nameOf(anchor.senderId) ?: stringResource(R.string.chat_unknown_member),
+                    formatTime(anchor.sentAt),
+                )
+            } else {
+                stringResource(R.string.candidate_show_original)
+            },
             accent = accent,
             onClick = onShowEvidence,
         )
@@ -176,7 +182,7 @@ private fun DismissButton(enabled: Boolean, onDismiss: (DismissReason?) -> Unit)
 /** 근거 인용: 왼쪽 3px 유형 색 + “…” + "엄마 · 오후 2:10 · 원문 보기". 카드 안은 bg/default, 시트 안은 bg/subtle */
 @Composable
 internal fun Evidence(
-    quote: String,
+    quote: String?,
     meta: String,
     accent: Color,
     onClick: () -> Unit,
@@ -193,13 +199,15 @@ internal fun Evidence(
     ) {
         Box(Modifier.width(3.dp).fillMaxHeight().background(accent))
         Column(Modifier.padding(start = 10.dp, top = 6.dp, end = FamDimens.sm, bottom = 6.dp)) {
-            Text(
-                stringResource(R.string.candidate_quote, quote),
-                style = FamTheme.type.bodyMedium,
-                color = colors.textPrimary,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (quote != null) {
+                Text(
+                    stringResource(R.string.candidate_quote, quote),
+                    style = FamTheme.type.bodyMedium,
+                    color = colors.textPrimary,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(meta, style = FamTheme.type.caption, color = colors.textTertiary)
         }
     }

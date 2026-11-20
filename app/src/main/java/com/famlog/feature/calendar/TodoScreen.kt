@@ -63,12 +63,19 @@ import com.famlog.core.designsystem.component.FamChip
 import com.famlog.core.designsystem.component.FamTextField
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
+import com.famlog.core.model.CandidateType
+import com.famlog.core.model.ItemSource
 import com.famlog.core.model.Todo
+import com.famlog.feature.chat.ChatSourceRow
+import com.famlog.feature.chat.ChatSourceTag
 import java.time.LocalDate
 
 /** 캘린더 탭 [할 일] (TODO-01) */
 @Composable
-fun TodoTab(viewModel: TodoViewModel = hiltViewModel()) {
+fun TodoTab(
+    onOpenSource: (groupId: Long, source: ItemSource) -> Unit = { _, _ -> },
+    viewModel: TodoViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -104,6 +111,10 @@ fun TodoTab(viewModel: TodoViewModel = hiltViewModel()) {
             onDueDateChange = viewModel::onSheetDueDateChange,
             onSave = viewModel::saveSheet,
             onDelete = viewModel::deleteSheetTodo,
+            onOpenSource = { todo, source ->
+                viewModel.closeSheet()
+                onOpenSource(todo.groupId, source)
+            },
         )
     }
 }
@@ -256,6 +267,8 @@ private fun TodoRow(todo: Todo, state: TodoUiState, onToggleDone: (Todo) -> Unit
                 overflow = TextOverflow.Ellipsis,
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // 후보 승인으로 생긴 할 일 (ARC-06). 원문 보기는 수정 시트에서
+                if (todo.source != null) ChatSourceTag(CandidateType.TODO)
                 if (assignee != null) {
                     Box(Modifier.size(6.dp).background(memberColor(assignee, state.members), CircleShape))
                 }
@@ -288,6 +301,7 @@ private fun TodoSheetDialog(
     onDueDateChange: (LocalDate?) -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    onOpenSource: (Todo, ItemSource) -> Unit,
 ) {
     val colors = FamTheme.colors
     val editable = sheet.todo == null || state.canEdit(sheet.todo)
@@ -315,6 +329,8 @@ private fun TodoSheetDialog(
             if (!editable) {
                 Text(stringResource(R.string.todo_view_only), style = FamTheme.type.caption, color = colors.textTertiary)
             }
+            val todo = sheet.todo
+            todo?.source?.let { source -> ChatSourceRow(CandidateType.TODO, onOpen = { onOpenSource(todo, source) }) }
             FamTextField(
                 value = sheet.title,
                 onValueChange = onTitleChange,

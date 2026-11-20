@@ -5,6 +5,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,11 +21,17 @@ import com.famlog.core.model.CandidateType
 import com.famlog.core.model.ChatMessage
 import com.famlog.core.model.DismissReason
 import com.famlog.core.model.GroupRole
+import com.famlog.core.model.ItemSource
 import com.famlog.core.model.Member
 import com.famlog.core.model.MessageType
+import com.famlog.core.model.Schedule
 import com.famlog.core.model.SendState
+import com.famlog.feature.calendar.ScheduleDetailContent
+import com.famlog.feature.calendar.ScheduleDetailUiState
 import com.famlog.feature.chat.CandidateCardActions
 import com.famlog.feature.chat.CandidateForm
+import com.famlog.feature.chat.CandidateInboxContent
+import com.famlog.feature.chat.CandidateInboxUiState
 import com.famlog.feature.chat.CandidateSheet
 import com.famlog.feature.chat.CandidateSheetActions
 import com.famlog.feature.chat.CandidateSheetContent
@@ -162,6 +170,89 @@ class CandidateScreensTest {
         compose.onNodeWithText("등록").assertIsNotEnabled()
         // 시간(오전·오후)과 참석자는 AI 추정
         assertEquals(2, compose.onAllNodes(hasText("AI 추정 · 확인 필요")).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun 제안함은_안내와_대기_카드를_보이고_근거를_안_받았으면_원문_보기만() {
+        val low = candidate.copy(id = 2, surface = CandidateSurface.INBOX, anchorMessageId = 12, anchorSeq = 12)
+        var original: Long? = null
+        compose.setContent {
+            FamLogTheme {
+                CandidateInboxContent(
+                    state = CandidateInboxUiState(
+                        items = listOf(low, candidate), anchors = mapOf(30L to anchor), members = members, loading = false,
+                    ),
+                    onBack = {}, onRetry = {}, onLoadMore = {},
+                    cardActions = CandidateCardActions(onShowEvidence = { original = it.id }),
+                )
+            }
+        }
+
+        compose.onNodeWithText("제안함").assertExists()
+        compose.onNodeWithText("AI가 대화에서 찾은 일정·할 일·장소 제안이에요. 등록하기 전에는 저장되지 않아요.").assertExists()
+        // 근거를 받아 둔 카드만 인용이 있다
+        compose.onNodeWithText("“이번 토요일 11시에 할머니 댁 가자”").assertExists()
+        compose.onAllNodes(hasText("원문 보기")).onFirst().performClick()
+        assertEquals(2L, original)
+    }
+
+    @Test
+    fun 제안함이_비었으면_안내한다() {
+        compose.setContent {
+            FamLogTheme {
+                CandidateInboxContent(
+                    state = CandidateInboxUiState(loading = false),
+                    onBack = {}, onRetry = {}, onLoadMore = {}, cardActions = CandidateCardActions(),
+                )
+            }
+        }
+
+        compose.onNodeWithText("대기 중인 AI 제안이 없어요.").assertExists()
+    }
+
+    @Test
+    fun 채팅방_앱바_제안함_배지는_더_있으면_N_플러스() {
+        var opened = false
+        compose.setContent {
+            FamLogTheme {
+                ChatRoomContent(
+                    state = ChatRoomUiState(groupName = "우리 가족", memberCount = 2, today = today),
+                    onBack = {}, onInputChange = {}, onSend = {}, onCancelReply = {}, onLoadOlder = {},
+                    onLongPress = {}, onReactionClick = { _, _ -> }, onInvite = {},
+                    candidates = CandidateUiState(pending = 50, pendingMore = true),
+                    onOpenInbox = { opened = true },
+                )
+            }
+        }
+
+        compose.onNodeWithText("50+").assertExists()
+        compose.onNodeWithContentDescription("제안함 열기, 대기 중인 AI 제안 50+개").performClick()
+        assertEquals(true, opened)
+    }
+
+    @Test
+    fun 채팅에서_등록한_일정_상세는_원문_보기로_간다() {
+        val schedule = Schedule(
+            id = 6, groupId = 1, title = "할머니 댁 방문", allDay = false,
+            startsAt = OffsetDateTime.parse("2026-11-21T11:00:00+09:00").toInstant(),
+            endsAt = OffsetDateTime.parse("2026-11-21T11:00:00+09:00").toInstant(),
+            startDate = LocalDate.of(2026, 11, 21), endDate = LocalDate.of(2026, 11, 21), participantIds = listOf(7, 8),
+            rrule = null, memo = null, reminders = emptyList(), createdBy = 7, version = 0, source = ItemSource(35, 35),
+        )
+        var opened: Pair<Long, ItemSource>? = null
+        compose.setContent {
+            FamLogTheme {
+                ScheduleDetailContent(
+                    state = ScheduleDetailUiState(loading = false, schedule = schedule, members = members, myUserId = 7),
+                    onBack = {}, onEdit = {}, onDelete = {},
+                    onOpenSource = { groupId, source -> opened = groupId to source },
+                )
+            }
+        }
+
+        compose.onNodeWithText("채팅에서 등록").assertExists()
+        compose.onNodeWithText("원문 보기").performClick()
+        assertEquals(1L to ItemSource(35, 35), opened)
     }
 
     @Test
