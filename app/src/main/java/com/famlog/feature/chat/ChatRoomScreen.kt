@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -83,6 +84,9 @@ import com.famlog.core.model.GroupRole
 import com.famlog.core.model.Member
 import com.famlog.core.model.ReactionEmoji
 import com.famlog.feature.group.shareInvite
+import com.famlog.feature.settings.SettingsEvent
+import com.famlog.feature.settings.AiNoticeSheet
+import com.famlog.feature.settings.AiNoticePromptViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
@@ -95,10 +99,12 @@ fun ChatRoomScreen(
     onOpenPlace: (placeId: Long) -> Unit = {},
     onOpenSchedule: (scheduleId: Long) -> Unit = {},
     onOpenInbox: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     focus: ChatFocus? = null,
     onFocusHandled: () -> Unit = {},
     viewModel: ChatRoomViewModel = hiltViewModel(),
     candidateViewModel: CandidateViewModel = hiltViewModel(),
+    noticeViewModel: AiNoticePromptViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val candidates by candidateViewModel.uiState.collectAsStateWithLifecycle()
@@ -146,6 +152,16 @@ fun ChatRoomScreen(
         }
     }
 
+    // AI 분석 안내 (SET-01): 켜진 그룹에서 아직 확인하지 않았으면 한 번
+    val noticePrompt by noticeViewModel.prompt.collectAsStateWithLifecycle()
+    LaunchedEffect(noticeViewModel) {
+        noticeViewModel.events.collect { event ->
+            when (event) {
+                is SettingsEvent.Message -> snackbarHostState.showSnackbar(event.text.asString(context))
+            }
+        }
+    }
+
     // Photo Picker: 권한 없이 고른 파일만 받는다 (사양서 8.6). 한 번에 30개
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(MAX_PICK),
@@ -173,7 +189,17 @@ fun ChatRoomScreen(
         scrollKey = scrollKey,
         onScrolled = { scrollKey = null },
         onOpenInbox = onOpenInbox,
+        onOpenSettings = onOpenSettings,
     )
+
+    noticePrompt?.let { prompt ->
+        AiNoticeSheet(
+            state = prompt,
+            onConfirm = noticeViewModel::confirm,
+            onOptOut = noticeViewModel::optOut,
+            onDismiss = noticeViewModel::dismiss,
+        )
+    }
 
     candidates.sheet?.let { sheet ->
         CandidateSheetDialog(
@@ -220,6 +246,7 @@ fun ChatRoomContent(
     scrollKey: String? = null,
     onScrolled: () -> Unit = {},
     onOpenInbox: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {},
 ) {
     val colors = FamTheme.colors
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -232,7 +259,14 @@ fun ChatRoomContent(
             gesturesEnabled = drawerState.isOpen,
             drawerContent = {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    ChatDrawer(state = state, onInvite = onInvite)
+                    ChatDrawer(
+                        state = state,
+                        onInvite = onInvite,
+                        onOpenSettings = {
+                            scope.launch { drawerState.close() }
+                            onOpenSettings()
+                        },
+                    )
                 }
             },
         ) {
@@ -563,7 +597,7 @@ private fun MenuItem(text: String, danger: Boolean = false, onClick: () -> Unit)
  * 사진 모아보기(S10-2 이후)·링크 모아보기(CHAT-07)·공지(CHAT-08)·그룹 설정(S20)은 아직 없다.
  */
 @Composable
-private fun ChatDrawer(state: ChatRoomUiState, onInvite: () -> Unit) {
+private fun ChatDrawer(state: ChatRoomUiState, onInvite: () -> Unit, onOpenSettings: () -> Unit) {
     val colors = FamTheme.colors
     ModalDrawerSheet(drawerContainerColor = colors.bgDefault, drawerShape = RoundedCornerShape(0.dp)) {
         Column(
@@ -608,6 +642,17 @@ private fun ChatDrawer(state: ChatRoomUiState, onInvite: () -> Unit) {
                         }
                     }
                 }
+            HorizontalDivider(color = colors.borderDefault, modifier = Modifier.padding(vertical = FamDimens.sm))
+            Text(
+                text = stringResource(R.string.chat_drawer_settings),
+                style = FamTheme.type.bodyLarge,
+                color = colors.textPrimary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable(role = Role.Button, onClick = onOpenSettings)
+                    .wrapContentHeight(Alignment.CenterVertically),
+            )
             if (state.myRole.canInvite) {
                 FamButton(
                     text = stringResource(R.string.chat_drawer_invite),

@@ -444,4 +444,43 @@
     <string name="candidate_inbox_failed">제안을 불러오지 못했어요.</string>
     <string name="source_tag">채팅에서 등록</string>
     <string name="source_open">원문 보기</string>
+
+    <!-- 그룹 설정 · AI 분석 안내 (SET-01) -->
+    <string name="chat_drawer_settings">그룹 설정</string>
+    <string name="group_settings_title">그룹 설정</string>
+    <string name="group_settings_failed">설정을 불러오지 못했어요.</string>
+    <string name="group_settings_ai_section">AI 분석</string>
+    <string name="group_settings_ai">대화 분석</string>
+    <string name="group_settings_ai_desc">대화에서 일정·할 일·장소를 찾아 등록 후보로 보여 줘요</string>
+    <string name="group_settings_ai_admin_only">그룹장·관리자만 켜고 끌 수 있어요</string>
+    <string name="group_settings_opt_out">내 메시지 분석 제외</string>
+    <string name="group_settings_opt_out_desc">켜면 이 그룹에서 내가 보낸 메시지는 AI에 보내지 않아요</string>
+    <string name="group_settings_show_notice">AI 분석 안내 보기</string>
+    <string name="group_settings_members_opt_out">구성원별 분석 제외</string>
+    <string name="group_settings_members_opt_out_desc">관리자도 볼 수만 있고 바꿀 수 없어요</string>
+    <string name="group_settings_member_opted_out">제외</string>
+    <string name="group_settings_member_analyzed">분석</string>
+    <string name="group_settings_member_unknown">-</string>
+    <string name="group_settings_ai_enabled">AI 분석을 켰어요.</string>
+    <string name="group_settings_ai_disabled">AI 분석을 껐어요. 이제 대화를 AI에 보내지 않아요.</string>
+    <string name="ai_notice_title_enable">AI 분석을 켜기 전에 확인해 주세요</string>
+    <string name="ai_notice_title_confirm">이 그룹은 AI 분석이 켜져 있어요</string>
+    <string name="ai_notice_title_view">AI 분석 안내</string>
+    <string name="ai_notice_intro_enable">켜면 이 그룹의 대화가 아래처럼 처리돼요. 구성원은 언제든 자기 메시지를 분석에서 뺄 수 있어요.</string>
+    <string name="ai_notice_intro">AI가 대화에서 일정·할 일·장소를 찾아 등록 후보로 보여 줘요. 가족이 확인하기 전에는 아무것도 등록되지 않아요.</string>
+    <string name="ai_notice_recipient">받는 곳</string>
+    <string name="ai_notice_recipient_value">%1$s (%2$s)</string>
+    <string name="ai_notice_sent">보내는 것</string>
+    <string name="ai_notice_not_sent">보내지 않는 것</string>
+    <string name="ai_notice_purpose">목적</string>
+    <string name="ai_notice_retention">보관 기간</string>
+    <string name="ai_notice_refusal">거부 방법</string>
+    <string name="ai_notice_version">안내 버전 %1$s</string>
+    <string name="ai_notice_enable">동의하고 켜기</string>
+    <string name="ai_notice_cancel">취소</string>
+    <string name="ai_notice_confirm">확인</string>
+    <string name="ai_notice_opt_out">내 메시지 분석 제외</string>
+    <string name="ai_notice_close">닫기</string>
+    <string name="ai_notice_changed">안내가 바뀌었어요. 다시 확인해 주세요.</string>
+    <string name="ai_notice_opted_out">이 그룹에서 내 메시지를 AI 분석에서 뺐어요. 그룹 설정에서 바꿀 수 있어요.</string>
 </resources>

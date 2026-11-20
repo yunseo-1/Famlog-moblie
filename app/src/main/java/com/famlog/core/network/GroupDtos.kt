@@ -46,6 +46,7 @@ data class MemberResponse(
     val familyRole: String? = null,
     val familyTitle: String? = null,
     val calendarColor: String? = null,
+    val aiOptOut: Boolean? = null,
 )
 
 @Serializable
@@ -80,6 +81,7 @@ fun MemberResponse.toModel() = Member(
     familyRole = familyRoleOf(familyRole),
     familyTitle = familyTitle,
     calendarColor = calendarColor,
+    aiOptOut = aiOptOut,
 )
 
 fun GroupDetailResponse.toModel() = GroupDetail(id, name, groupRoleOf(myRole), members.map { it.toModel() })

@@ -55,6 +55,7 @@ import com.famlog.feature.place.PlaceAliasScreen
 import com.famlog.feature.place.PlaceDetailScreen
 import com.famlog.feature.place.PlaceScreen
 import com.famlog.feature.place.PlaceSearchScreen
+import com.famlog.feature.settings.GroupSettingsScreen
 import com.famlog.feature.story.StoryScreen
 
 @Composable
@@ -166,6 +167,7 @@ fun FamlogNavHost(
                     onOpenPlace = { navController.navigate(PlaceDetailRoute(it)) },
                     onOpenSchedule = { navController.navigate(ScheduleDetailRoute(it)) },
                     onOpenInbox = { navController.navigate(CandidateInboxRoute(route.groupId)) },
+                    onOpenSettings = { navController.navigate(GroupSettingsRoute(route.groupId)) },
                     focus = focus,
                     onFocusHandled = {
                         routeFocusDone = true
@@ -182,6 +184,7 @@ fun FamlogNavHost(
                     },
                 )
             }
+            composable<GroupSettingsRoute> { GroupSettingsScreen(onBack = { navController.popBackStack() }) }
             composable<MediaViewerRoute> { MediaViewerScreen(onClose = { navController.popBackStack() }) }
             composable<CalendarRoute> {
                 CalendarScreen(

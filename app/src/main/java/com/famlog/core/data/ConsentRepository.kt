@@ -26,6 +26,10 @@ class ConsentRepository @Inject constructor(
     suspend fun agreeLocation(docVersion: String): ApiResult<Consent> =
         caller.call { api.update(Consent.LOCATION, UpdateConsentRequest(agreed = true, docVersion = docVersion)).toModel() }
 
+    /** AI 분석 안내 확인 (SET-01). [docVersion]은 보여 준 안내 버전. 다르면 400(field docVersion) */
+    suspend fun confirmAiNotice(docVersion: String): ApiResult<Consent> =
+        caller.call { api.update(Consent.AI_ANALYSIS, UpdateConsentRequest(agreed = true, docVersion = docVersion)).toModel() }
+
     /** 철회하면 서버가 내가 올린 사진의 위치도 지운다 (설정 화면 S20에서 쓴다) */
     suspend fun withdrawLocation(): ApiResult<Consent> =
         caller.call { api.update(Consent.LOCATION, UpdateConsentRequest(agreed = false)).toModel() }

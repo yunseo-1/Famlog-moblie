@@ -1,7 +1,7 @@
 package com.famlog.core.model
 
 /**
- * 선택 동의 하나 (사양서 8.2). 지금 앱이 다루는 것은 위치기반서비스(LOCATION)뿐이다.
+ * 선택 동의 하나 (사양서 8.2). 앱이 다루는 것은 위치기반서비스(LOCATION)와 AI 분석 안내 확인(AI_ANALYSIS).
  * [currentVersion]이 null이면 아직 받지 않는 동의. [reconsentRequired]면 예전 버전에 동의한 상태라 다시 받아야 한다.
  */
 data class Consent(
@@ -16,5 +16,8 @@ data class Consent(
 
     companion object {
         const val LOCATION = "LOCATION"
+
+        /** AI 분석 안내 확인. 서버가 국외 이전 고지(OVERSEAS_TRANSFER)도 함께 기록한다 */
+        const val AI_ANALYSIS = "AI_ANALYSIS"
     }
 }

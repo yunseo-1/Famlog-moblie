@@ -139,6 +139,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideGroupSettingsApi(retrofit: Retrofit): GroupSettingsApi = retrofit.create(GroupSettingsApi::class.java)
+
+    @Provides
+    @Singleton
     fun provideCandidateApi(retrofit: Retrofit): CandidateApi = retrofit.create(CandidateApi::class.java)
 
     @Provides
