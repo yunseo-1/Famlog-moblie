@@ -3,6 +3,7 @@ package com.famlog.feature.group
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +14,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,7 +23,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -49,7 +54,8 @@ enum class GroupStartMode { CHOOSE, CREATE, JOIN }
 
 /**
  * SCR-02 그룹 시작. 그룹이 없을 때 첫 화면이고, 그룹 전환 시트(SCR-70)의 [새 그룹]·[초대 코드 참여]로도 온다.
- * [onBack]이 null이면 돌아갈 화면이 없는 첫 화면이다.
+ * [onBack]이 null이면 돌아갈 화면이 없는 첫 화면이다. 그때는 [onOpenSettings]로 설정(계정 삭제·로그아웃)에 갈 수 있다
+ * (그룹이 없으면 채팅 탭의 설정 버튼에 닿지 못한다).
  */
 @Composable
 fun GroupStartScreen(
@@ -57,6 +63,7 @@ fun GroupStartScreen(
     onNavigate: (StartDestination) -> Unit,
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onOpenSettings: (() -> Unit)? = null,
     viewModel: GroupStartViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -88,6 +95,7 @@ fun GroupStartScreen(
         onCreate = viewModel::create,
         onJoin = viewModel::join,
         modifier = modifier,
+        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -102,10 +110,30 @@ fun GroupStartContent(
     onCreate: () -> Unit,
     onJoin: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     val colors = FamTheme.colors
     Column(modifier = modifier.fillMaxSize().imePadding()) {
-        if (onBack != null) FamTopBar(onBack = onBack) else Spacer(Modifier.heightIn(min = FamDimens.appBarHeight))
+        when {
+            onBack != null -> FamTopBar(onBack = onBack)
+            onOpenSettings != null -> Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = FamDimens.appBarHeight)
+                    .padding(horizontal = FamDimens.xs),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        painterResource(R.drawable.ic_settings),
+                        contentDescription = stringResource(R.string.settings_title),
+                        tint = colors.textPrimary,
+                    )
+                }
+            }
+            else -> Spacer(Modifier.heightIn(min = FamDimens.appBarHeight))
+        }
         Column(
             modifier = Modifier
                 .weight(1f)
