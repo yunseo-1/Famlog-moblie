@@ -16,6 +16,9 @@ sealed interface StartDestination {
 
     /** 서버에 닿지 못했다. 다시 시도를 보여준다 */
     data object Unavailable : StartDestination
+
+    /** 최소 지원 버전보다 낮다 → 강제 업데이트 (SCR-00) */
+    data object UpdateRequired : StartDestination
 }
 
 /**
@@ -26,9 +29,13 @@ class StartResolver @Inject constructor(
     private val tokenStore: TokenStore,
     private val sessionStore: SessionStore,
     private val groupRepository: GroupRepository,
+    private val appConfigRepository: AppConfigRepository,
 ) {
 
     suspend fun resolve(): StartDestination {
+        // 앱 설정을 못 받아도 막지 않는다 (낮은 버전이면 다른 API가 426으로 다시 알린다)
+        appConfigRepository.refresh()
+        if (appConfigRepository.updateRequired()) return StartDestination.UpdateRequired
         if (tokenStore.get() == null || sessionStore.userId() == null) {
             tokenStore.clear()
             return StartDestination.Login
@@ -64,6 +71,9 @@ class StartResolver @Inject constructor(
         }
 
     /** 401은 TokenAuthenticator가 이미 토큰을 지웠다(재발급 실패·무효) → 로그인 */
-    private fun failureDestination(failure: ApiResult.Failure) =
-        if (failure.status == 401) StartDestination.Login else StartDestination.Unavailable
+    private fun failureDestination(failure: ApiResult.Failure) = when (failure.status) {
+        401 -> StartDestination.Login
+        426 -> StartDestination.UpdateRequired
+        else -> StartDestination.Unavailable
+    }
 }

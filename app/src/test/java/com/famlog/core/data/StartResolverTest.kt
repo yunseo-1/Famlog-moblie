@@ -1,6 +1,7 @@
 package com.famlog.core.data
 
 import com.famlog.core.datastore.FakeTokenStore
+import com.famlog.core.model.ApiResult
 import com.famlog.core.model.AuthTokens
 import com.famlog.core.network.GroupApi
 import com.famlog.testing.FakeSessionStore
@@ -8,6 +9,9 @@ import com.famlog.testing.api
 import com.famlog.testing.errorResponse
 import com.famlog.testing.jsonResponse
 import com.famlog.testing.testApiCaller
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -23,16 +27,36 @@ class StartResolverTest {
     private val tokenStore = FakeTokenStore(AuthTokens("access", "refresh"))
     private val session = FakeSessionStore(userId = 7)
     private lateinit var resolver: StartResolver
+    private var updateRequired = false
+    private val appConfig = mockk<AppConfigRepository> {
+        coEvery { refresh() } returns ApiResult.NetworkError
+        every { updateRequired() } answers { updateRequired }
+    }
 
     @Before
     fun setUp() {
         server.start()
         val groups = GroupRepository(server.api<GroupApi>(), testApiCaller(), session)
-        resolver = StartResolver(tokenStore, session, groups)
+        resolver = StartResolver(tokenStore, session, groups, appConfig)
     }
 
     @After
     fun tearDown() = server.shutdown()
+
+    @Test
+    fun 최소_지원_버전보다_낮으면_로그인보다_먼저_강제_업데이트() = runTest {
+        updateRequired = true
+
+        assertEquals(StartDestination.UpdateRequired, resolver.resolve())
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun 앱_설정을_못_받아도_막지_않고_API가_426이면_강제_업데이트() = runTest {
+        server.enqueue(errorResponse(426, "UPGRADE_REQUIRED"))
+
+        assertEquals(StartDestination.UpdateRequired, resolver.resolve())
+    }
 
     @Test
     fun 토큰이_없으면_로그인() = runTest {

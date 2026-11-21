@@ -1,10 +1,12 @@
 package com.famlog.navigation
 
-import com.famlog.core.datastore.AppPrefs
 import app.cash.turbine.test
+import com.famlog.core.data.AppConfigRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.StartDestination
+import com.famlog.core.data.StartPrompt
 import com.famlog.core.data.StartResolver
+import com.famlog.core.datastore.AppPrefs
 import com.famlog.core.designsystem.UiText
 import com.famlog.core.model.ApiError
 import com.famlog.core.model.ApiResult
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -39,7 +42,28 @@ class MainViewModelTest {
     }
     private val resolver = mockk<StartResolver>()
     private val appPrefs = mockk<AppPrefs>(relaxed = true)
-    private val viewModel = MainViewModel(SessionEvents(), groups, resolver, PendingOpen(), appPrefs)
+    private val appConfig = mockk<AppConfigRepository>(relaxed = true)
+    private val viewModel = MainViewModel(SessionEvents(), groups, resolver, PendingOpen(), appPrefs, appConfig)
+
+    @Test
+    fun 탭_화면에서_한_번_공지를_보이고_닫으면_본_것으로_저장한_뒤_선택_업데이트를_묻는다() = runTest(mainRule.dispatcher) {
+        val notice = StartPrompt.Notice("점검 안내", "2026-11-21T10:00:00+09:00")
+        coEvery { appConfig.nextPrompt() } returns notice andThen StartPrompt.OptionalUpdate andThen null
+        // 메인 디스패처를 바꾼 뒤에 만든다 (필드의 viewModel은 규칙보다 먼저 만들어진다)
+        val viewModel = MainViewModel(SessionEvents(), groups, resolver, PendingOpen(), appPrefs, appConfig)
+
+        viewModel.checkStartPrompt()
+        viewModel.checkStartPrompt()
+        assertEquals(notice, viewModel.startPrompt.value)
+
+        viewModel.onStartPromptDone()
+        coVerify { appConfig.markNoticeSeen("2026-11-21T10:00:00+09:00") }
+        assertEquals(StartPrompt.OptionalUpdate, viewModel.startPrompt.value)
+
+        viewModel.onStartPromptDone()
+        assertNull(viewModel.startPrompt.value)
+        coVerify(exactly = 2) { appConfig.nextPrompt() }
+    }
 
     @Test
     fun 현재_그룹을_다시_고르면_서버에_보내지_않고_시트만_닫는다() = runTest {

@@ -63,6 +63,11 @@ object NetworkModule {
         AppHeadersInterceptor(appVersion = appVersion)
 
     @Provides
+    @Singleton
+    fun provideUpgradeRequiredInterceptor(sessionEvents: SessionEvents): UpgradeRequiredInterceptor =
+        UpgradeRequiredInterceptor(sessionEvents)
+
+    @Provides
     @AppVersion
     fun provideAppVersion(): String = BuildConfig.VERSION_NAME
 
@@ -71,9 +76,11 @@ object NetworkModule {
     @RefreshClient
     fun provideRefreshOkHttpClient(
         appHeaders: AppHeadersInterceptor,
+        upgradeRequired: UpgradeRequiredInterceptor,
         @BuildTypeInterceptors buildTypeInterceptors: Set<@JvmSuppressWildcards Interceptor>,
     ): OkHttpClient = baseClientBuilder()
         .addInterceptor(appHeaders)
+        .addInterceptor(upgradeRequired)
         .apply { buildTypeInterceptors.forEach(::addInterceptor) }
         .build()
 
@@ -87,11 +94,13 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         appHeaders: AppHeadersInterceptor,
+        upgradeRequired: UpgradeRequiredInterceptor,
         authInterceptor: AuthInterceptor,
         tokenAuthenticator: TokenAuthenticator,
         @BuildTypeInterceptors buildTypeInterceptors: Set<@JvmSuppressWildcards Interceptor>,
     ): OkHttpClient = baseClientBuilder()
         .addInterceptor(appHeaders)
+        .addInterceptor(upgradeRequired)
         .addInterceptor(authInterceptor)
         .apply { buildTypeInterceptors.forEach(::addInterceptor) }
         .authenticator(tokenAuthenticator)
@@ -144,6 +153,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideReportApi(retrofit: Retrofit): ReportApi = retrofit.create(ReportApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAppConfigApi(retrofit: Retrofit): AppConfigApi = retrofit.create(AppConfigApi::class.java)
 
     @Provides
     @Singleton

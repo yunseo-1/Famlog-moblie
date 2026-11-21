@@ -2,6 +2,7 @@ package com.famlog.feature.place
 
 import app.cash.turbine.test
 import com.famlog.R
+import com.famlog.core.data.AppConfigRepository
 import com.famlog.core.data.ConsentRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.LocationSource
@@ -9,6 +10,7 @@ import com.famlog.core.data.PlaceRepository
 import com.famlog.core.designsystem.UiText
 import com.famlog.core.model.ApiError
 import com.famlog.core.model.ApiResult
+import com.famlog.core.model.AppFeatures
 import com.famlog.core.model.Consent
 import com.famlog.core.model.Coordinates
 import com.famlog.core.model.ErrorCodes
@@ -70,11 +72,24 @@ class PlaceMapViewModelTest {
         coEvery { current() } returns here
     }
 
-    private fun viewModel() = PlaceMapViewModel(places, consents, location, groups, clock)
+    private val features = MutableStateFlow(AppFeatures())
+    private val appConfig = mockk<AppConfigRepository> { every { features } returns this@PlaceMapViewModelTest.features }
+
+    private fun viewModel() = PlaceMapViewModel(places, consents, location, groups, appConfig, clock)
 
     /** uiState는 구독할 때만 값이 흐른다 (WhileSubscribed) */
     private fun TestScope.started(): PlaceMapViewModel = viewModel().also { vm ->
         backgroundScope.launch { vm.uiState.collect {} }
+    }
+
+    @Test
+    fun 서버가_내_주변을_꺼_두면_버튼을_숨긴다() = runTest(mainRule.dispatcher) {
+        val viewModel = started()
+        assertEquals(true, viewModel.uiState.value.nearbyAvailable)
+
+        features.value = AppFeatures(nearby = false)
+
+        assertFalse(viewModel.uiState.value.nearbyAvailable)
     }
 
     @Test

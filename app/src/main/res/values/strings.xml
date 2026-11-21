@@ -506,4 +506,16 @@
     <string name="report_detail_count">%1$d/%2$d</string>
     <string name="report_submit">신고하기</string>
     <string name="report_done">신고가 접수됐어요. 확인 후 조치할게요.</string>
+
+    <!-- 앱 설정·강제 업데이트 (SCR-00) -->
+    <string name="force_update_title">새 버전으로 업데이트해 주세요</string>
+    <string name="force_update_body">이 버전은 더 이상 쓸 수 없어요. 업데이트하면 대화와 일정은 그대로 이어져요.</string>
+    <string name="force_update_button">업데이트</string>
+    <string name="notice_title">알려 드려요</string>
+    <string name="notice_confirm">확인</string>
+    <string name="optional_update_title">새 버전이 있어요</string>
+    <string name="optional_update_body">더 나아진 팸로그를 쓰려면 업데이트해 주세요.</string>
+    <string name="optional_update_button">업데이트</string>
+    <string name="optional_update_later">나중에</string>
+    <string name="group_settings_ai_paused">AI 분석이 잠시 멈춰 있어요. 설정은 그대로 저장돼요.</string>
 </resources>

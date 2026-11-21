@@ -3,6 +3,7 @@ package com.famlog.feature.place
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.famlog.R
+import com.famlog.core.data.AppConfigRepository
 import com.famlog.core.data.ConsentRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.LocationSource
@@ -93,6 +94,7 @@ class PlaceMapViewModel @Inject constructor(
     private val consentRepository: ConsentRepository,
     private val locationSource: LocationSource,
     private val groupRepository: GroupRepository,
+    appConfigRepository: AppConfigRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -100,8 +102,12 @@ class PlaceMapViewModel @Inject constructor(
     private val viewport = MutableStateFlow<MapBounds?>(null)
     private var loadJob: Job? = null
 
-    val uiState: StateFlow<PlaceMapUiState> = combine(local, groupRepository.details) { state, details ->
-        state.copy(members = state.groupId?.let { details[it] }?.members.orEmpty())
+    val uiState: StateFlow<PlaceMapUiState> = combine(local, groupRepository.details, appConfigRepository.features) { state, details, features ->
+        state.copy(
+            members = state.groupId?.let { details[it] }?.members.orEmpty(),
+            // 서버가 내 주변을 꺼 두었으면(기능 스위치) 버튼을 숨긴다
+            nearbyAvailable = state.nearbyAvailable && features.nearby,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
 
     private val _events = Channel<PlaceMapEvent>(Channel.BUFFERED)

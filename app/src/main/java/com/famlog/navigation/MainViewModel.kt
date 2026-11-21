@@ -2,8 +2,10 @@ package com.famlog.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.famlog.core.data.AppConfigRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.StartDestination
+import com.famlog.core.data.StartPrompt
 import com.famlog.core.data.StartResolver
 import com.famlog.core.datastore.AppPrefs
 import com.famlog.core.designsystem.UiText
@@ -44,6 +46,7 @@ class MainViewModel @Inject constructor(
     private val startResolver: StartResolver,
     private val pendingOpen: PendingOpen,
     private val appPrefs: AppPrefs,
+    private val appConfigRepository: AppConfigRepository,
 ) : ViewModel() {
     val sessionEvents: Flow<SessionEvent> = sessionEvents.events
 
@@ -69,6 +72,30 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch { _showNotificationPrompt.value = !appPrefs.notificationPromptShown() }
+    }
+
+    /** 앱 시작 안내 (SCR-00): 새 공지 → 선택 업데이트 순서로 하나씩 */
+    private val _startPrompt = MutableStateFlow<StartPrompt?>(null)
+    val startPrompt: StateFlow<StartPrompt?> = _startPrompt.asStateFlow()
+    private var startPromptChecked = false
+
+    /** 탭 화면에 처음 왔을 때 한 번 */
+    fun checkStartPrompt() {
+        if (startPromptChecked) return
+        startPromptChecked = true
+        viewModelScope.launch { _startPrompt.value = appConfigRepository.nextPrompt() }
+    }
+
+    /** 공지를 닫으면 본 것으로 저장하고, 선택 업데이트가 있으면 이어서 묻는다 */
+    fun onStartPromptDone() {
+        val prompt = _startPrompt.value ?: return
+        _startPrompt.value = null
+        viewModelScope.launch {
+            if (prompt is StartPrompt.Notice) {
+                appConfigRepository.markNoticeSeen(prompt.updatedAt)
+                _startPrompt.value = appConfigRepository.nextPrompt()
+            }
+        }
     }
 
     fun consumePendingOpen() = pendingOpen.clear()
