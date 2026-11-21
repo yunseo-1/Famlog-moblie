@@ -100,7 +100,7 @@ fun LoginScreen(
     }
 }
 
-/** 삭제 예정 계정으로 로그인했다 (ACC-01): 서버 문구(복구 기한) + 복구할지 */
+/** 삭제 예정 계정으로 로그인했다 (ACC-01): "계정을 복구할까요?" + 서버 문구("삭제 예정인 계정이에요. ○월 ○일까지 복구할 수 있어요.") */
 @Composable
 fun RestoreDialog(prompt: UiText, restoring: Boolean, onRestore: () -> Unit, onCancel: () -> Unit) {
     val colors = FamTheme.colors
@@ -109,7 +109,7 @@ fun RestoreDialog(prompt: UiText, restoring: Boolean, onRestore: () -> Unit, onC
         title = { Text(stringResource(R.string.restore_title)) },
         text = {
             Text(
-                prompt.asString() + "\n" + stringResource(R.string.restore_body),
+                prompt.asString(),
                 style = FamTheme.type.bodyMedium,
                 color = colors.textPrimary,
             )

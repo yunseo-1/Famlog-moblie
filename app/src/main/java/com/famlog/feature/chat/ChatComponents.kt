@@ -116,7 +116,8 @@ fun ChatBubble(
     ) {
         if (!mine) {
             if (showSender) {
-                GroupAvatar(name = senderName ?: unknownName, size = 32.dp)
+                // 나간 구성원은 첫 글자("나")가 "나 자신"으로 읽히지 않게 "?"로
+                GroupAvatar(name = senderName ?: UNKNOWN_AVATAR, size = 32.dp)
             } else {
                 Spacer(Modifier.width(32.dp))
             }
@@ -401,3 +402,5 @@ fun ChatInputBar(
         }
     }
 }
+
+private const val UNKNOWN_AVATAR = "?"

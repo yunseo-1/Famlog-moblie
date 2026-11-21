@@ -150,6 +150,8 @@ fun FamlogNavHost(
                     initialMode = route.mode,
                     onNavigate = navController::navigateTo,
                     onBack = if (route.canGoBack) ({ navController.popBackStack() }) else null,
+                    // 그룹이 없으면 채팅 탭 설정에 닿지 못하므로 여기서도 (계정 삭제·로그아웃)
+                    onOpenSettings = if (route.canGoBack) null else ({ navController.navigate(SettingsRoute) }),
                 )
             }
             composable<RoleSetupRoute> {

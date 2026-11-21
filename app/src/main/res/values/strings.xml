@@ -591,8 +591,7 @@
     <string name="account_delete_confirm_body">바로 로그아웃되고, 30일 뒤에는 되돌릴 수 없어요.</string>
     <string name="account_delete_owner_title">그룹장을 먼저 넘겨 주세요</string>
     <string name="account_delete_owner_hint">채팅방 메뉴(≡)에서 가족을 눌러 그룹장을 넘길 수 있어요.</string>
-    <string name="restore_title">삭제 예정인 계정이에요</string>
-    <string name="restore_body">계정을 복구하고 로그인할까요?</string>
+    <string name="restore_title">계정을 복구할까요?</string>
     <string name="restore_confirm">복구하고 로그인</string>
     <string name="restore_cancel">취소</string>
 </resources>
