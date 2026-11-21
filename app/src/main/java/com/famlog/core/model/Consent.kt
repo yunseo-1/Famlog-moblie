@@ -19,5 +19,10 @@ data class Consent(
 
         /** AI 분석 안내 확인. 서버가 국외 이전 고지(OVERSEAS_TRANSFER)도 함께 기록한다 */
         const val AI_ANALYSIS = "AI_ANALYSIS"
+
+        /** 국외 이전 고지. AI_ANALYSIS와 함께 기록·철회된다 (따로 바꿀 수 없다) */
+        const val OVERSEAS_TRANSFER = "OVERSEAS_TRANSFER"
+        const val TERMS = "TERMS"
+        const val PRIVACY = "PRIVACY"
     }
 }

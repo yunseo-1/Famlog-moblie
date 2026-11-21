@@ -16,6 +16,9 @@ object ErrorCodes {
     const val AUTH_TOKEN_EXPIRED = "AUTH_TOKEN_EXPIRED"
     const val AUTH_INVALID = "AUTH_INVALID"
     const val USER_NOT_REGISTERED = "USER_NOT_REGISTERED"
+
+    /** 삭제 예정(30일 유예) 계정으로 로그인했다. message에 복구 기한 */
+    const val ACCOUNT_PENDING_DELETION = "ACCOUNT_PENDING_DELETION"
     const val UPGRADE_REQUIRED = "UPGRADE_REQUIRED"
     const val AGE_RESTRICTED = "AGE_RESTRICTED"
     const val NOT_FOUND = "NOT_FOUND"

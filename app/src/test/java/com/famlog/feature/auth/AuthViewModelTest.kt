@@ -73,6 +73,39 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun 삭제_예정_계정이면_복구를_묻고_같은_소셜_토큰으로_복구하며_로그인한다() = runTest {
+        coEvery { social.requestToken(SocialProvider.KAKAO, context) } returns SocialLoginResult.Token("t")
+        coEvery { auth.login(SocialProvider.KAKAO, "t") } returns
+            ApiResult.Failure(403, ApiError(ErrorCodes.ACCOUNT_PENDING_DELETION, "삭제 예정인 계정이에요. 12월 21일까지 복구할 수 있어요.", null))
+        coEvery { auth.login(SocialProvider.KAKAO, "t", true) } returns ApiResult.Success(Unit)
+        coEvery { resolver.resolve() } returns StartDestination.Main
+
+        viewModel.login(SocialProvider.KAKAO, context)
+        assertEquals(UiText.Plain("삭제 예정인 계정이에요. 12월 21일까지 복구할 수 있어요."), viewModel.state.value.restorePrompt)
+
+        viewModel.destinations.test {
+            viewModel.restore()
+            assertEquals(StartDestination.Main, awaitItem())
+        }
+        coVerify { auth.login(SocialProvider.KAKAO, "t", true) }
+        assertNull(viewModel.state.value.restorePrompt)
+    }
+
+    @Test
+    fun 복구를_취소하면_로그인_화면에_그대로_남고_다시_보내지_않는다() = runTest {
+        coEvery { social.requestToken(SocialProvider.KAKAO, context) } returns SocialLoginResult.Token("t")
+        coEvery { auth.login(SocialProvider.KAKAO, "t") } returns
+            ApiResult.Failure(403, ApiError(ErrorCodes.ACCOUNT_PENDING_DELETION, "삭제 예정인 계정이에요.", null))
+
+        viewModel.login(SocialProvider.KAKAO, context)
+        viewModel.cancelRestore()
+        viewModel.restore()
+
+        assertNull(viewModel.state.value.restorePrompt)
+        coVerify(exactly = 0) { auth.login(any(), any(), true) }
+    }
+
+    @Test
     fun 취소하면_안내_없이_원래대로() = runTest {
         coEvery { social.requestToken(any(), any()) } returns SocialLoginResult.Cancelled
 

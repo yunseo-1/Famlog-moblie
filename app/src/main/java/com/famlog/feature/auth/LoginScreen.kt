@@ -26,6 +26,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -94,6 +95,37 @@ fun LoginScreen(
             )
         }
     }
+    state.restorePrompt?.let { prompt ->
+        RestoreDialog(prompt = prompt, restoring = state.restoring, onRestore = viewModel::restore, onCancel = viewModel::cancelRestore)
+    }
+}
+
+/** 삭제 예정 계정으로 로그인했다 (ACC-01): 서버 문구(복구 기한) + 복구할지 */
+@Composable
+fun RestoreDialog(prompt: UiText, restoring: Boolean, onRestore: () -> Unit, onCancel: () -> Unit) {
+    val colors = FamTheme.colors
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(stringResource(R.string.restore_title)) },
+        text = {
+            Text(
+                prompt.asString() + "\n" + stringResource(R.string.restore_body),
+                style = FamTheme.type.bodyMedium,
+                color = colors.textPrimary,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onRestore, enabled = !restoring) {
+                Text(stringResource(R.string.restore_confirm), color = colors.brandPrimary)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel, enabled = !restoring) {
+                Text(stringResource(R.string.restore_cancel), color = colors.textSecondary)
+            }
+        },
+        containerColor = colors.bgDefault,
+    )
 }
 
 /** SCR-01. Figma에 화면이 없어 컴포넌트·토큰으로 구성했다. 소셜 버튼은 각 사의 브랜드 가이드를 따른다 */

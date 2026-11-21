@@ -41,9 +41,14 @@ data class DeviceRequest(
 data class LoginRequest(
     val providerToken: String,
     val device: DeviceRequest,
+    /** 삭제 예정(30일 유예) 계정을 되살리며 로그인한다 */
+    val restore: Boolean? = null,
 ) {
     override fun toString(): String = "LoginRequest(device=$device)"
 }
+
+@Serializable
+data class DeleteAccountRequest(val deleteMedia: Boolean)
 
 @Serializable
 data class AgreementsRequest(
