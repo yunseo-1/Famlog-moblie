@@ -10,6 +10,9 @@ import javax.inject.Singleton
 sealed interface SessionEvent {
     /** 토큰이 무효(AUTH_INVALID)이거나 재발급에 실패해 다시 로그인해야 한다 */
     data object LoggedOut : SessionEvent
+
+    /** 최소 지원 버전보다 낮다 (426 UPGRADE_REQUIRED) → 강제 업데이트 화면 */
+    data object UpgradeRequired : SessionEvent
 }
 
 /** 네트워크 계층에서 생긴 세션 변화를 화면 쪽(내비게이션)에 알린다 */
@@ -23,5 +26,9 @@ class SessionEvents @Inject constructor() {
 
     fun notifyLoggedOut() {
         _events.tryEmit(SessionEvent.LoggedOut)
+    }
+
+    fun notifyUpgradeRequired() {
+        _events.tryEmit(SessionEvent.UpgradeRequired)
     }
 }

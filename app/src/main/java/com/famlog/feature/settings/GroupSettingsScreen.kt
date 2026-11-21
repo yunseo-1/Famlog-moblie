@@ -115,6 +115,13 @@ fun GroupSettingsContent(
                         enabled = state.isAdmin && !state.savingAi,
                         onCheckedChange = onAiEnabledChange,
                     )
+                    if (state.aiPaused) {
+                        Text(
+                            stringResource(R.string.group_settings_ai_paused),
+                            style = FamTheme.type.caption,
+                            color = colors.textSecondary,
+                        )
+                    }
                     SwitchRow(
                         title = stringResource(R.string.group_settings_opt_out),
                         description = stringResource(R.string.group_settings_opt_out_desc),

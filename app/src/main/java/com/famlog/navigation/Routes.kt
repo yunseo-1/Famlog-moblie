@@ -16,6 +16,9 @@ import kotlinx.serialization.Serializable
 @Serializable data object StartRoute
 @Serializable data object LoginRoute
 
+/** SCR-00 강제 업데이트 */
+@Serializable data object ForceUpdateRoute
+
 /** SCR-02. [canGoBack]이면 그룹 전환 시트에서 온 것이라 뒤로 갈 수 있다 */
 @Serializable data class GroupStartRoute(
     val mode: GroupStartMode = GroupStartMode.CHOOSE,

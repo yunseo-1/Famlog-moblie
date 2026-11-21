@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.famlog.R
+import com.famlog.core.data.AppConfigRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.GroupSettingsRepository
 import com.famlog.core.datastore.SessionStore
@@ -40,6 +41,8 @@ data class GroupSettingsUiState(
     val savingAi: Boolean = false,
     val savingOptOut: Boolean = false,
     val notice: AiNoticeSheetState? = null,
+    /** 서버가 AI 분석 전체를 잠시 멈췄다 (기능 스위치). 설정은 그대로 저장된다 */
+    val aiPaused: Boolean = false,
 ) {
     val isAdmin: Boolean get() = myRole != GroupRole.MEMBER
 }
@@ -55,13 +58,15 @@ class GroupSettingsViewModel @Inject constructor(
     private val settingsRepository: GroupSettingsRepository,
     private val groupRepository: GroupRepository,
     private val sessionStore: SessionStore,
+    appConfigRepository: AppConfigRepository,
 ) : ViewModel() {
 
     val groupId: Long = checkNotNull(savedStateHandle["groupId"])
 
     private val local = MutableStateFlow(GroupSettingsUiState())
 
-    val uiState: StateFlow<GroupSettingsUiState> = combine(local, groupRepository.details) { state, details ->
+    val uiState: StateFlow<GroupSettingsUiState> = combine(local, groupRepository.details, appConfigRepository.features) { local, details, features ->
+        val state = local.copy(aiPaused = !features.aiAnalysis)
         val detail = details[groupId] ?: return@combine state
         state.copy(
             groupName = detail.name,

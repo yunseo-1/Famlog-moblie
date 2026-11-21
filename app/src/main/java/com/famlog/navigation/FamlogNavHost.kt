@@ -76,6 +76,10 @@ fun FamlogNavHost(
                     viewModel.consumePendingOpen()
                     navController.navigateTo(StartDestination.Login)
                 }
+                SessionEvent.UpgradeRequired -> {
+                    showSwitcher = false
+                    navController.navigateTo(StartDestination.UpdateRequired)
+                }
             }
         }
     }
@@ -111,6 +115,7 @@ fun FamlogNavHost(
 
     // 프로세스가 다시 만들어져 탭 화면부터 복원되면 시작 분기를 거치지 않으므로 그룹 목록을 다시 받는다
     LaunchedEffect(currentTab != null) {
+        if (currentTab != null) viewModel.checkStartPrompt()
         if (currentTab != null && switcherState.groups.isEmpty()) viewModel.refreshGroups()
     }
 
@@ -130,6 +135,7 @@ fun FamlogNavHost(
             modifier = contentModifier,
         ) {
             composable<StartRoute> { StartScreen(onNavigate = navController::navigateTo) }
+            composable<ForceUpdateRoute> { ForceUpdateScreen() }
             composable<LoginRoute> { LoginScreen(onNavigate = navController::navigateTo) }
             composable<GroupStartRoute> { entry ->
                 val route = entry.toRoute<GroupStartRoute>()
@@ -252,6 +258,11 @@ fun FamlogNavHost(
         visible = showNotificationPrompt && currentTab != null,
         onDone = viewModel::onNotificationPromptDone,
     )
+    // 공지·선택 업데이트 (SCR-00): 알림 권한 안내가 끝난 뒤 탭 화면에서
+    val startPrompt by viewModel.startPrompt.collectAsStateWithLifecycle()
+    startPrompt?.takeIf { currentTab != null && !showNotificationPrompt }?.let { prompt ->
+        StartPromptDialog(prompt = prompt, onDone = viewModel::onStartPromptDone)
+    }
 
     if (showSwitcher) {
         GroupSwitcherSheet(
@@ -340,6 +351,7 @@ private fun NavHostController.navigateTo(destination: StartDestination) {
         is StartDestination.RoleSetup -> RoleSetupRoute(destination.groupId)
         StartDestination.Main -> ChatRoute
         StartDestination.Unavailable -> return
+        StartDestination.UpdateRequired -> ForceUpdateRoute
     }
     navigate(route) {
         popUpTo(graph.id) { inclusive = true }

@@ -3,12 +3,14 @@ package com.famlog.feature.settings
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.famlog.R
+import com.famlog.core.data.AppConfigRepository
 import com.famlog.core.data.GroupRepository
 import com.famlog.core.data.GroupSettingsRepository
 import com.famlog.core.designsystem.UiText
 import com.famlog.core.model.AiNotice
 import com.famlog.core.model.ApiError
 import com.famlog.core.model.ApiResult
+import com.famlog.core.model.AppFeatures
 import com.famlog.core.model.GroupAiSettings
 import com.famlog.core.model.GroupDetail
 import com.famlog.core.model.GroupRole
@@ -49,8 +51,11 @@ class GroupSettingsViewModelTest {
     }
 
     private fun TestScope.started() = GroupSettingsViewModel(
-        SavedStateHandle(mapOf("groupId" to GROUP)), settings, groups, FakeSessionStore(userId = ME),
+        SavedStateHandle(mapOf("groupId" to GROUP)), settings, groups, FakeSessionStore(userId = ME), appConfig,
     ).also { vm -> backgroundScope.launch { vm.uiState.collect {} } }
+
+    private val features = MutableStateFlow(AppFeatures())
+    private val appConfig = mockk<AppConfigRepository> { every { features } returns this@GroupSettingsViewModelTest.features }
 
     private fun asMember() {
         details.value = mapOf(GROUP to GroupDetail(GROUP, "우리 가족", GroupRole.MEMBER, listOf(me.copy(aiOptOut = null), mom.copy(aiOptOut = null))))
@@ -159,6 +164,20 @@ class GroupSettingsViewModelTest {
 
         coVerify(exactly = 2) { groups.detail(GROUP) }
         assertEquals(listOf(true, true), viewModel.uiState.value.members.map { it.aiOptOut })
+    }
+
+    @Test
+    fun 서버가_AI_분석을_멈췄으면_안내를_보이고_설정은_그대로_바꿀_수_있다() = runTest(mainRule.dispatcher) {
+        coEvery { settings.setAiEnabled(GROUP, true, "1.0") } returns ApiResult.Success(GroupAiSettings(true, "1.0", false))
+        val viewModel = started()
+        assertFalse(viewModel.uiState.value.aiPaused)
+
+        features.value = AppFeatures(aiAnalysis = false)
+        assertTrue(viewModel.uiState.value.aiPaused)
+
+        viewModel.setAiEnabled(true)
+        viewModel.confirmNotice()
+        assertTrue(viewModel.uiState.value.aiEnabled)
     }
 
     @Test
