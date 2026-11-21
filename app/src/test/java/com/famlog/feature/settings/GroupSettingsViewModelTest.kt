@@ -11,6 +11,7 @@ import com.famlog.core.model.AiNotice
 import com.famlog.core.model.ApiError
 import com.famlog.core.model.ApiResult
 import com.famlog.core.model.AppFeatures
+import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.GroupAiSettings
 import com.famlog.core.model.GroupDetail
 import com.famlog.core.model.GroupRole
@@ -192,6 +193,69 @@ class GroupSettingsViewModelTest {
         coVerify(exactly = 0) { settings.setAiEnabled(any(), any(), any()) }
         viewModel.closeNotice()
         assertNull(viewModel.uiState.value.notice)
+    }
+
+    // ---- 그룹 나가기·삭제 (GRP-05) ----
+
+    @Test
+    fun 다른_가족이_있는_그룹장은_나가기_전에_넘기라는_안내만() = runTest(mainRule.dispatcher) {
+        val viewModel = started()
+
+        viewModel.openLeave()
+        assertTrue(viewModel.uiState.value.leave!!.ownerMustTransfer)
+        viewModel.confirmLeave()
+
+        coVerify(exactly = 0) { groups.leave(any()) }
+    }
+
+    @Test
+    fun 혼자인_그룹장은_삭제_경고를_보고_나가면_시작으로_간다() = runTest(mainRule.dispatcher) {
+        details.value = mapOf(GROUP to GroupDetail(GROUP, "우리 가족", GroupRole.OWNER, listOf(me)))
+        coEvery { groups.leave(GROUP) } returns ApiResult.Success(Unit)
+        val viewModel = started()
+
+        viewModel.openLeave()
+        assertTrue(viewModel.uiState.value.leave!!.alone)
+        viewModel.events.test {
+            viewModel.confirmLeave()
+            assertEquals(SettingsEvent.Left, awaitItem())
+        }
+        assertNull(viewModel.uiState.value.leave)
+    }
+
+    @Test
+    fun 그사이_가족이_들어와_409면_넘기라는_안내로_바꾼다() = runTest(mainRule.dispatcher) {
+        details.value = mapOf(GROUP to GroupDetail(GROUP, "우리 가족", GroupRole.OWNER, listOf(me)))
+        coEvery { groups.leave(GROUP) } returns
+            ApiResult.Failure(409, ApiError(ErrorCodes.OWNER_TRANSFER_REQUIRED, "그룹장을 넘긴 뒤 나갈 수 있어요.", null))
+        val viewModel = started()
+
+        viewModel.openLeave()
+        viewModel.confirmLeave()
+
+        assertTrue(viewModel.uiState.value.leave!!.ownerMustTransfer)
+    }
+
+    @Test
+    fun 구성원은_그룹을_지울_수_없고_그룹장은_이름이_맞아야_지운다() = runTest(mainRule.dispatcher) {
+        coEvery { groups.deleteGroup(GROUP) } returns ApiResult.Success(Unit)
+        val viewModel = started()
+
+        viewModel.openDelete()
+        viewModel.onDeleteNameChange("우리")
+        viewModel.confirmDelete()
+        coVerify(exactly = 0) { groups.deleteGroup(any()) }
+
+        viewModel.onDeleteNameChange(" 우리 가족 ")
+        viewModel.events.test {
+            viewModel.confirmDelete()
+            assertEquals(SettingsEvent.Left, awaitItem())
+        }
+
+        asMember()
+        val memberView = started()
+        memberView.openDelete()
+        assertNull(memberView.uiState.value.delete)
     }
 
     private companion object {

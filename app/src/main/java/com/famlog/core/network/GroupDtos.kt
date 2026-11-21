@@ -50,6 +50,9 @@ data class MemberResponse(
 )
 
 @Serializable
+data class ChangeRoleRequest(val role: String)
+
+@Serializable
 data class GroupDetailResponse(
     val id: Long,
     val name: String,

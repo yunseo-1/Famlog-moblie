@@ -190,7 +190,18 @@ fun FamlogNavHost(
                     },
                 )
             }
-            composable<GroupSettingsRoute> { GroupSettingsScreen(onBack = { navController.popBackStack() }) }
+            composable<GroupSettingsRoute> {
+                GroupSettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    // 나가거나 지운 그룹 화면으로 돌아가지 않게 처음부터 다시 고른다 (다른 그룹 또는 그룹 시작)
+                    onLeft = {
+                        navController.navigate(StartRoute) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
             composable<MediaViewerRoute> { MediaViewerScreen(onClose = { navController.popBackStack() }) }
             composable<CalendarRoute> {
                 CalendarScreen(

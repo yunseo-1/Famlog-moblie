@@ -11,8 +11,10 @@ import com.famlog.core.datastore.SessionStore
 import com.famlog.core.designsystem.UiText
 import com.famlog.core.designsystem.toUiText
 import com.famlog.core.model.ApiResult
+import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.GroupRole
 import com.famlog.core.model.Member
+import com.famlog.core.model.errorCode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -43,12 +45,26 @@ data class GroupSettingsUiState(
     val notice: AiNoticeSheetState? = null,
     /** 서버가 AI 분석 전체를 잠시 멈췄다 (기능 스위치). 설정은 그대로 저장된다 */
     val aiPaused: Boolean = false,
+    /** 나를 포함한 구성원 수 (나가기 안내를 고른다) */
+    val memberCount: Int = 0,
+    val leave: LeaveDialog? = null,
+    val delete: DeleteDialog? = null,
 ) {
     val isAdmin: Boolean get() = myRole != GroupRole.MEMBER
+    val isOwner: Boolean get() = myRole == GroupRole.OWNER
 }
+
+/** 그룹 나가기 확인. [ownerMustTransfer]면 나갈 수 없다는 안내만 (다른 가족이 있는 그룹장) */
+data class LeaveDialog(val ownerMustTransfer: Boolean = false, val alone: Boolean = false, val busy: Boolean = false)
+
+/** 그룹 삭제 확인 (그룹장). 그룹 이름을 그대로 입력해야 [삭제]가 켜진다 */
+data class DeleteDialog(val name: String = "", val busy: Boolean = false)
 
 sealed interface SettingsEvent {
     data class Message(val text: UiText) : SettingsEvent
+
+    /** 그룹에서 나갔거나 그룹을 지웠다 → 시작 분기(다른 그룹 또는 그룹 시작) */
+    data object Left : SettingsEvent
 }
 
 /** 그룹 설정 (SCR-12 서랍 → 그룹 설정): AI 분석 켜기·끄기(관리자), 내 메시지 분석 제외(모두), 안내 다시 보기 (SET-01) */
@@ -71,6 +87,7 @@ class GroupSettingsViewModel @Inject constructor(
         state.copy(
             groupName = detail.name,
             myRole = detail.myRole,
+            memberCount = detail.members.size,
             members = if (detail.myRole != GroupRole.MEMBER) detail.members else emptyList(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
@@ -166,6 +183,72 @@ class GroupSettingsViewModel @Inject constructor(
         }
     }
 
+    // ---- 그룹 나가기·삭제 (GRP-05) ----
+
+    fun openLeave() {
+        val state = uiState.value
+        val others = state.memberCount > 1
+        local.update { it.copy(leave = LeaveDialog(ownerMustTransfer = state.isOwner && others, alone = !others)) }
+    }
+
+    fun closeLeave() {
+        if (local.value.leave?.busy == true) return
+        local.update { it.copy(leave = null) }
+    }
+
+    fun confirmLeave() {
+        val dialog = local.value.leave ?: return
+        if (dialog.busy || dialog.ownerMustTransfer) return
+        local.update { it.copy(leave = dialog.copy(busy = true)) }
+        viewModelScope.launch {
+            val result = groupRepository.leave(groupId)
+            when {
+                result is ApiResult.Success -> {
+                    local.update { it.copy(leave = null) }
+                    _events.send(SettingsEvent.Left)
+                }
+                // 그사이 다른 가족이 들어왔으면 서버가 막는다
+                result.errorCode == ErrorCodes.OWNER_TRANSFER_REQUIRED ->
+                    local.update { it.copy(leave = LeaveDialog(ownerMustTransfer = true)) }
+                else -> {
+                    local.update { it.copy(leave = dialog) }
+                    message(result.toUiText())
+                }
+            }
+        }
+    }
+
+    fun openDelete() {
+        if (!uiState.value.isOwner) return
+        local.update { it.copy(delete = DeleteDialog()) }
+    }
+
+    fun closeDelete() {
+        if (local.value.delete?.busy == true) return
+        local.update { it.copy(delete = null) }
+    }
+
+    fun onDeleteNameChange(value: String) = local.update { it.copy(delete = it.delete?.copy(name = value.take(MAX_GROUP_NAME))) }
+
+    /** 그룹 이름이 그대로 맞아야 지운다 */
+    fun confirmDelete() {
+        val dialog = local.value.delete ?: return
+        if (dialog.busy || !canDelete(dialog)) return
+        local.update { it.copy(delete = dialog.copy(busy = true)) }
+        viewModelScope.launch {
+            val result = groupRepository.deleteGroup(groupId)
+            if (result is ApiResult.Success) {
+                local.update { it.copy(delete = null) }
+                _events.send(SettingsEvent.Left)
+            } else {
+                local.update { it.copy(delete = dialog) }
+                message(result.toUiText())
+            }
+        }
+    }
+
+    fun canDelete(dialog: DeleteDialog): Boolean = dialog.name.trim() == uiState.value.groupName && uiState.value.groupName.isNotEmpty()
+
     private fun openNotice(mode: AiNoticeMode) {
         viewModelScope.launch {
             when (val result = settingsRepository.aiNotice()) {
@@ -179,6 +262,7 @@ class GroupSettingsViewModel @Inject constructor(
 
     private companion object {
         const val FIELD_NOTICE_VERSION = "aiNoticeVersion"
+        const val MAX_GROUP_NAME = 30
     }
 }
 

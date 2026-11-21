@@ -518,4 +518,37 @@
     <string name="optional_update_button">업데이트</string>
     <string name="optional_update_later">나중에</string>
     <string name="group_settings_ai_paused">AI 분석이 잠시 멈춰 있어요. 설정은 그대로 저장돼요.</string>
+
+    <!-- 구성원 관리 (GRP-05) -->
+    <string name="member_role_member">구성원</string>
+    <string name="member_make_admin">관리자로 바꾸기</string>
+    <string name="member_make_member">구성원으로 바꾸기</string>
+    <string name="member_transfer">그룹장 넘기기</string>
+    <string name="member_remove">내보내기</string>
+    <string name="member_report">신고하기</string>
+    <string name="member_transfer_title">%1$s님에게 그룹장을 넘길까요?</string>
+    <string name="member_transfer_body">넘기면 나는 관리자가 되고, 다시 가져오려면 새 그룹장이 넘겨 줘야 해요.</string>
+    <string name="member_transfer_confirm">넘기기</string>
+    <string name="member_remove_title">%1$s님을 내보낼까요?</string>
+    <string name="member_remove_body">올린 메시지와 사진은 그룹에 남아요. 다시 들어오려면 초대 코드가 필요해요.</string>
+    <string name="member_remove_confirm">내보내기</string>
+    <string name="member_cancel">취소</string>
+    <string name="member_done_admin">%1$s님을 관리자로 바꿨어요.</string>
+    <string name="member_done_member">%1$s님을 구성원으로 바꿨어요.</string>
+    <string name="member_done_owner">%1$s님에게 그룹장을 넘겼어요.</string>
+    <string name="member_done_removed">%1$s님을 내보냈어요.</string>
+    <string name="group_settings_danger_section">그룹</string>
+    <string name="group_leave">그룹 나가기</string>
+    <string name="group_leave_title">\'%1$s\' 그룹에서 나갈까요?</string>
+    <string name="group_leave_body">나가면 이 그룹의 대화와 기록을 더 볼 수 없어요. 다시 들어오려면 초대 코드가 필요해요.</string>
+    <string name="group_leave_alone_body">혼자 있는 그룹이라 나가면 30일 뒤 그룹이 삭제돼요.</string>
+    <string name="group_leave_owner_body">그룹장은 나가기 전에 다른 가족에게 그룹장을 넘겨야 해요. 채팅방 메뉴에서 가족을 눌러 넘길 수 있어요.</string>
+    <string name="group_leave_confirm">나가기</string>
+    <string name="group_delete">그룹 삭제</string>
+    <string name="group_delete_title">그룹을 삭제할까요?</string>
+    <string name="group_delete_body">바로 모든 가족이 이 그룹을 볼 수 없게 되고, 30일 뒤 대화와 기록이 모두 지워져요. 삭제하려면 그룹 이름 \'%1$s\'을(를) 입력해 주세요.</string>
+    <string name="group_delete_field">그룹 이름</string>
+    <string name="group_delete_confirm">삭제</string>
+    <string name="group_settings_cancel">취소</string>
+    <string name="group_settings_ok">확인</string>
 </resources>
