@@ -14,8 +14,11 @@ import com.famlog.core.network.AgreementsRequest
 import com.famlog.core.network.ApiCaller
 import com.famlog.core.network.AppHeadersInterceptor
 import com.famlog.core.network.AuthResponse
+import com.famlog.core.network.DeleteAccountRequest
 import com.famlog.core.network.DeviceRequest
 import com.famlog.core.network.LoginRequest
+import com.famlog.core.network.RefreshRequest
+import com.famlog.core.network.SessionEvents
 import com.famlog.core.network.SignupRequest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,12 +36,31 @@ class AuthRepository @Inject constructor(
     private val deviceIdProvider: DeviceIdProvider,
     private val messageDao: MessageDao,
     private val pushTokens: PushTokenRepository,
+    private val sessionEvents: SessionEvents,
     @DeviceName private val deviceName: String,
 ) {
 
-    suspend fun login(provider: SocialProvider, providerToken: String): ApiResult<Unit> {
-        val request = LoginRequest(providerToken, device())
+    /** [restore]면 삭제 예정 계정을 되살리며 로그인한다 (403 ACCOUNT_PENDING_DELETION 다음에) */
+    suspend fun login(provider: SocialProvider, providerToken: String, restore: Boolean = false): ApiResult<Unit> {
+        val request = LoginRequest(providerToken, device(), restore = true.takeIf { restore })
         return save(caller.call { api.login(provider.path, request) })
+    }
+
+    /** 이 기기만 로그아웃. 서버에 닿지 못해도 기기에서는 로그아웃한다 */
+    suspend fun logout() {
+        tokenStore.get()?.let { tokens -> caller.call { api.logout(RefreshRequest(tokens.refreshToken)) } }
+        signOutLocally()
+    }
+
+    /** 계정 삭제 (ACC-01). 성공하면 서버가 모든 기기를 로그아웃시키므로 이 기기도 정리한다 */
+    suspend fun deleteAccount(deleteMedia: Boolean): ApiResult<Unit> =
+        caller.call { api.deleteMe(DeleteAccountRequest(deleteMedia)) }.also { if (it is ApiResult.Success) signOutLocally() }
+
+    /** 토큰·채팅 캐시를 지우고 로그인 화면으로 (채팅 연결·후보도 LoggedOut으로 정리된다) */
+    private suspend fun signOutLocally() {
+        tokenStore.clear()
+        messageDao.clear()
+        sessionEvents.notifyLoggedOut()
     }
 
     suspend fun signup(

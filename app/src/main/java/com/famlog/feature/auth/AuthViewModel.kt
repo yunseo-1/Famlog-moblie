@@ -42,6 +42,9 @@ data class AuthUiState(
     val nickname: String = "",
     val birthYm: String = "",
     val birthCheck: BirthCheck = BirthCheck.EMPTY,
+    /** 삭제 예정 계정으로 로그인했다 → 복구할지 묻는다. 서버 문구(복구 기한) */
+    val restorePrompt: UiText? = null,
+    val restoring: Boolean = false,
 ) {
     val nicknameValid: Boolean get() = nickname.isNotBlank()
     val canSignup: Boolean
@@ -68,6 +71,9 @@ class AuthViewModel @Inject constructor(
 
     private var pendingSignup: Pair<SocialProvider, String>? = null
 
+    /** 복구를 물을 때 같은 소셜 토큰으로 다시 로그인하려고 메모리에만 둔다 */
+    private var pendingRestore: Pair<SocialProvider, String>? = null
+
     fun login(provider: SocialProvider, activityContext: Context) {
         if (_state.value.loadingProvider != null) return
         _state.update { it.copy(loadingProvider = provider, message = null) }
@@ -86,10 +92,38 @@ class AuthViewModel @Inject constructor(
                     pendingSignup = provider to token
                     _state.update { it.copy(step = AuthStep.SIGNUP) }
                 }
+                result.errorCode == ErrorCodes.ACCOUNT_PENDING_DELETION -> {
+                    pendingRestore = provider to token
+                    _state.update { it.copy(restorePrompt = result.toUiText()) }
+                }
                 else -> finishLoading(result.toUiText())
             }
             _state.update { it.copy(loadingProvider = null) }
         }
+    }
+
+    /** [복구하고 로그인]: 같은 소셜 토큰으로 restore=true (ACC-01) */
+    fun restore() {
+        val (provider, token) = pendingRestore ?: return
+        if (_state.value.restoring) return
+        _state.update { it.copy(restoring = true) }
+        viewModelScope.launch {
+            val result = authRepository.login(provider, token, restore = true)
+            if (result is ApiResult.Success) {
+                pendingRestore = null
+                _state.update { it.copy(restorePrompt = null, restoring = false) }
+                _destinations.send(startResolver.resolve())
+            } else {
+                _state.update { it.copy(restoring = false, restorePrompt = null, message = result.toUiText()) }
+                pendingRestore = null
+            }
+        }
+    }
+
+    fun cancelRestore() {
+        if (_state.value.restoring) return
+        pendingRestore = null
+        _state.update { it.copy(restorePrompt = null) }
     }
 
     private fun finishLoading(message: UiText?) {

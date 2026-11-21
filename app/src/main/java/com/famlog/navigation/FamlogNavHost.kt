@@ -3,6 +3,8 @@ package com.famlog.navigation
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -30,11 +32,12 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.famlog.R
 import com.famlog.core.data.StartDestination
-import com.famlog.core.model.ItemSource
 import com.famlog.core.designsystem.asString
 import com.famlog.core.designsystem.component.FamAppBar
 import com.famlog.core.designsystem.component.FamBottomNav
 import com.famlog.core.designsystem.component.FamBottomNavItem
+import com.famlog.core.designsystem.theme.FamTheme
+import com.famlog.core.model.ItemSource
 import com.famlog.core.network.SessionEvent
 import com.famlog.feature.album.AlbumScreen
 import com.famlog.feature.auth.LoginScreen
@@ -55,7 +58,10 @@ import com.famlog.feature.place.PlaceAliasScreen
 import com.famlog.feature.place.PlaceDetailScreen
 import com.famlog.feature.place.PlaceScreen
 import com.famlog.feature.place.PlaceSearchScreen
+import com.famlog.feature.settings.AccountDeleteScreen
 import com.famlog.feature.settings.GroupSettingsScreen
+import com.famlog.feature.settings.PrivacyScreen
+import com.famlog.feature.settings.SettingsScreen
 import com.famlog.feature.story.StoryScreen
 
 @Composable
@@ -127,6 +133,7 @@ fun FamlogNavHost(
             viewModel.refreshGroups()
             showSwitcher = true
         },
+        onOpenSettings = { navController.navigate(SettingsRoute) },
         snackbarHostState = snackbarHostState,
     ) { contentModifier ->
         NavHost(
@@ -190,6 +197,13 @@ fun FamlogNavHost(
                     },
                 )
             }
+            composable<SettingsRoute> {
+                SettingsScreen(onBack = { navController.popBackStack() }, onOpenPrivacy = { navController.navigate(PrivacyRoute) })
+            }
+            composable<PrivacyRoute> {
+                PrivacyScreen(onBack = { navController.popBackStack() }, onOpenAccountDelete = { navController.navigate(AccountDeleteRoute) })
+            }
+            composable<AccountDeleteRoute> { AccountDeleteScreen(onBack = { navController.popBackStack() }) }
             composable<GroupSettingsRoute> {
                 GroupSettingsScreen(
                     onBack = { navController.popBackStack() },
@@ -301,6 +315,7 @@ fun MainScaffold(
     onTabSelected: (TopLevelDestination) -> Unit,
     onGroupSwitcherClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenSettings: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     content: @Composable (Modifier) -> Unit,
 ) {
@@ -311,6 +326,18 @@ fun MainScaffold(
                 FamAppBar(
                     title = if (currentTab.showsGroupSwitcher) groupTitle else stringResource(R.string.app_bar_brand),
                     onGroupSwitcherClick = if (currentTab.showsGroupSwitcher) onGroupSwitcherClick else null,
+                    actions = {
+                        // 내 계정 설정은 그룹과 상관없어 그룹 전환이 없는 채팅 탭에만 둔다
+                        if (currentTab == TopLevelDestination.CHAT) {
+                            IconButton(onClick = onOpenSettings) {
+                                Icon(
+                                    painterResource(R.drawable.ic_settings),
+                                    contentDescription = stringResource(R.string.settings_title),
+                                    tint = FamTheme.colors.textPrimary,
+                                )
+                            }
+                        }
+                    },
                 )
             }
         },

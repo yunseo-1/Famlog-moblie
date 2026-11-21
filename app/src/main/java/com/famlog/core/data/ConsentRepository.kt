@@ -26,6 +26,13 @@ class ConsentRepository @Inject constructor(
     suspend fun agreeLocation(docVersion: String): ApiResult<Consent> =
         caller.call { api.update(Consent.LOCATION, UpdateConsentRequest(agreed = true, docVersion = docVersion)).toModel() }
 
+    /** 내 동의 전부 (동의 내역, SCR-81). 서버 순서 그대로 */
+    suspend fun all(): ApiResult<List<Consent>> = caller.call { api.list() }.map { response -> response.items.map { it.toModel() } }
+
+    /** AI 분석 안내 철회: 국외 이전 고지도 함께 철회되고, 내 모든 그룹에서 분석 제외가 켜진다 */
+    suspend fun withdrawAiNotice(): ApiResult<Consent> =
+        caller.call { api.update(Consent.AI_ANALYSIS, UpdateConsentRequest(agreed = false)).toModel() }
+
     /** AI 분석 안내 확인 (SET-01). [docVersion]은 보여 준 안내 버전. 다르면 400(field docVersion) */
     suspend fun confirmAiNotice(docVersion: String): ApiResult<Consent> =
         caller.call { api.update(Consent.AI_ANALYSIS, UpdateConsentRequest(agreed = true, docVersion = docVersion)).toModel() }

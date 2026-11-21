@@ -36,6 +36,11 @@ import kotlinx.serialization.Serializable
 /** SCR-14 제안함 (채팅방 앱바 sparkle) */
 @Serializable data class CandidateInboxRoute(val groupId: Long)
 
+/** 설정 (SCR-80, 채팅 탭 앱바) → 개인정보·보안 (SCR-81) → 계정 삭제 (ACC-01) */
+@Serializable data object SettingsRoute
+@Serializable data object PrivacyRoute
+@Serializable data object AccountDeleteRoute
+
 /** 그룹 설정 (채팅방 서랍 → 그룹 설정, SET-01) */
 @Serializable data class GroupSettingsRoute(val groupId: Long)
 
