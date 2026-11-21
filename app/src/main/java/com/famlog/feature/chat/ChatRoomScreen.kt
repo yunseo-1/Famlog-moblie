@@ -85,6 +85,10 @@ import com.famlog.core.model.Member
 import com.famlog.core.model.ReactionEmoji
 import com.famlog.core.model.ReportTarget
 import com.famlog.core.model.ReportTargetType
+import com.famlog.feature.group.MemberEvent
+import com.famlog.feature.group.MemberSheet
+import com.famlog.feature.group.MemberViewModel
+import com.famlog.feature.group.sheetActions
 import com.famlog.feature.group.shareInvite
 import com.famlog.feature.settings.SettingsEvent
 import com.famlog.feature.settings.AiNoticeSheet
@@ -111,6 +115,7 @@ fun ChatRoomScreen(
     candidateViewModel: CandidateViewModel = hiltViewModel(),
     noticeViewModel: AiNoticePromptViewModel = hiltViewModel(),
     reportViewModel: ReportViewModel = hiltViewModel(),
+    memberViewModel: MemberViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val candidates by candidateViewModel.uiState.collectAsStateWithLifecycle()
@@ -164,12 +169,24 @@ fun ChatRoomScreen(
         reportViewModel.events.collect { snackbarHostState.showSnackbar(it.asString(context)) }
     }
 
+    // 구성원 관리 (GRP-05): 서랍에서 구성원을 누르면
+    val memberSheet by memberViewModel.sheet.collectAsStateWithLifecycle()
+    LaunchedEffect(memberViewModel) {
+        memberViewModel.events.collect { event ->
+            when (event) {
+                is MemberEvent.Message -> snackbarHostState.showSnackbar(event.text.asString(context))
+                is MemberEvent.Report -> reportViewModel.open(event.target)
+            }
+        }
+    }
+
     // AI 분석 안내 (SET-01): 켜진 그룹에서 아직 확인하지 않았으면 한 번
     val noticePrompt by noticeViewModel.prompt.collectAsStateWithLifecycle()
     LaunchedEffect(noticeViewModel) {
         noticeViewModel.events.collect { event ->
             when (event) {
                 is SettingsEvent.Message -> snackbarHostState.showSnackbar(event.text.asString(context))
+                SettingsEvent.Left -> Unit
             }
         }
     }
@@ -206,7 +223,12 @@ fun ChatRoomScreen(
         onScrolled = { scrollKey = null },
         onOpenInbox = onOpenInbox,
         onOpenSettings = onOpenSettings,
+        onMemberClick = { memberViewModel.open(it, state.myUserId, state.myRole) },
     )
+
+    memberSheet?.let { sheet ->
+        MemberSheet(state = sheet, actions = remember(memberViewModel) { memberViewModel.sheetActions() })
+    }
 
     reportSheet?.let { sheet ->
         ReportSheet(state = sheet, actions = remember(reportViewModel) { reportViewModel.sheetActions() })
@@ -267,6 +289,7 @@ fun ChatRoomContent(
     onScrolled: () -> Unit = {},
     onOpenInbox: (() -> Unit)? = null,
     onOpenSettings: () -> Unit = {},
+    onMemberClick: (Member) -> Unit = {},
 ) {
     val colors = FamTheme.colors
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -285,6 +308,10 @@ fun ChatRoomContent(
                         onOpenSettings = {
                             scope.launch { drawerState.close() }
                             onOpenSettings()
+                        },
+                        onMemberClick = {
+                            scope.launch { drawerState.close() }
+                            onMemberClick(it)
                         },
                     )
                 }
@@ -620,7 +647,7 @@ private fun MenuItem(text: String, danger: Boolean = false, onClick: () -> Unit)
  * 사진 모아보기(S10-2 이후)·링크 모아보기(CHAT-07)·공지(CHAT-08)·그룹 설정(S20)은 아직 없다.
  */
 @Composable
-private fun ChatDrawer(state: ChatRoomUiState, onInvite: () -> Unit, onOpenSettings: () -> Unit) {
+private fun ChatDrawer(state: ChatRoomUiState, onInvite: () -> Unit, onOpenSettings: () -> Unit, onMemberClick: (Member) -> Unit) {
     val colors = FamTheme.colors
     ModalDrawerSheet(drawerContainerColor = colors.bgDefault, drawerShape = RoundedCornerShape(0.dp)) {
         Column(
@@ -648,7 +675,10 @@ private fun ChatDrawer(state: ChatRoomUiState, onInvite: () -> Unit, onOpenSetti
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(FamDimens.md),
-                        modifier = Modifier.heightIn(min = 48.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clickable(enabled = member.userId != state.myUserId, role = Role.Button) { onMemberClick(member) },
                     ) {
                         GroupAvatar(name = member.displayName, size = 36.dp)
                         Text(

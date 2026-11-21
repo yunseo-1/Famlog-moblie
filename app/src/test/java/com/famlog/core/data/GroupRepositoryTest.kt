@@ -128,6 +128,70 @@ class GroupRepositoryTest {
 
         assertEquals(ApiResult.NetworkError, repository.refreshGroups())
     }
+
+    // ---- 구성원 관리 (GRP-05) ----
+
+    private val detailJson = """{"id":1,"name":"우리 가족","myRole":"OWNER","members":[
+        {"userId":7,"nickname":"윤서","role":"ADMIN"},{"userId":8,"nickname":"엄마","role":"OWNER"}]}"""
+
+    @Test
+    fun 권한을_바꾸면_역할을_보내고_구성원과_그룹_목록을_다시_받는다() = runTest {
+        server.enqueue(jsonResponse("""{"userId":8,"nickname":"엄마","role":"OWNER"}"""))
+        server.enqueue(jsonResponse(detailJson))
+        server.enqueue(jsonResponse("""[{"id":1,"name":"우리 가족","memberCount":2,"myRole":"ADMIN"}]"""))
+
+        val result = repository.changeRole(1, 8, GroupRole.OWNER)
+
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/groups/1/members/8", request.path)
+        assertEquals("""{"role":"OWNER"}""", request.body.readUtf8())
+        assertEquals("/api/v1/groups/1", server.takeRequest().path)
+        assertEquals("/api/v1/groups/me", server.takeRequest().path)
+        assertTrue(result is ApiResult.Success<*>)
+        assertEquals(GroupRole.ADMIN, repository.groups.value.single().myRole)
+    }
+
+    @Test
+    fun 내보내기는_DELETE로_보내고_실패하면_서버_오류() = runTest {
+        server.enqueue(errorResponse(403, "GROUP_ROLE_REQUIRED", "그룹장은 내보낼 수 없어요."))
+
+        val result = repository.removeMember(1, 8)
+
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/groups/1/members/8", request.path)
+        assertEquals(ErrorCodes.GROUP_ROLE_REQUIRED, result.errorCode)
+    }
+
+    @Test
+    fun 나가거나_지우면_목록에서_빼고_현재_그룹이었으면_비운다() = runTest {
+        server.enqueue(jsonResponse("""[{"id":1,"name":"우리 가족","memberCount":2,"myRole":"MEMBER"},{"id":2,"name":"외가","memberCount":1,"myRole":"OWNER"}]"""))
+        repository.refreshGroups()
+        session.saveCurrentGroup(1)
+        server.takeRequest()
+
+        server.enqueue(MockResponse().setResponseCode(204))
+        assertTrue(repository.leave(1) is ApiResult.Success<*>)
+        val leave = server.takeRequest()
+        assertEquals("POST /api/v1/groups/1/leave", "${leave.method} ${leave.path}")
+        assertEquals(listOf(2L), repository.groups.value.map { it.id })
+        assertNull(session.currentGroupId.first())
+
+        session.saveCurrentGroup(2)
+        server.enqueue(MockResponse().setResponseCode(204))
+        assertTrue(repository.deleteGroup(2) is ApiResult.Success<*>)
+        val delete = server.takeRequest()
+        assertEquals("DELETE /api/v1/groups/2", "${delete.method} ${delete.path}")
+        assertTrue(repository.groups.value.isEmpty())
+    }
+
+    @Test
+    fun 다른_가족이_있는_그룹장이_나가면_넘기라는_409() = runTest {
+        server.enqueue(errorResponse(409, "OWNER_TRANSFER_REQUIRED", "그룹장을 넘긴 뒤 나갈 수 있어요."))
+
+        assertEquals(ErrorCodes.OWNER_TRANSFER_REQUIRED, repository.leave(1).errorCode)
+    }
 }
 
 fun groupDetailJson(id: Long, familyRole: String?, myUserId: Long = 7, name: String = "우리 가족"): String {

@@ -24,6 +24,9 @@ object ErrorCodes {
     const val GROUP_LIMIT_EXCEEDED = "GROUP_LIMIT_EXCEEDED"
     const val GROUP_ROLE_REQUIRED = "GROUP_ROLE_REQUIRED"
 
+    /** 다른 구성원이 있는 그룹장은 나가거나 계정을 지우기 전에 그룹장을 넘겨야 한다 */
+    const val OWNER_TRANSFER_REQUIRED = "OWNER_TRANSFER_REQUIRED"
+
     /** 수정하는 사이 다른 사람이 먼저 고쳤다 (일정·할 일 version) */
     const val VERSION_CONFLICT = "VERSION_CONFLICT"
 

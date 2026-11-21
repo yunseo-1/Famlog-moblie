@@ -4,12 +4,14 @@ import com.famlog.core.datastore.SessionStore
 import com.famlog.core.model.ApiResult
 import com.famlog.core.model.FamilyRole
 import com.famlog.core.model.GroupDetail
+import com.famlog.core.model.GroupRole
 import com.famlog.core.model.GroupSummary
 import com.famlog.core.model.Invite
 import com.famlog.core.model.LastMessage
 import com.famlog.core.model.Member
 import com.famlog.core.model.map
 import com.famlog.core.network.ApiCaller
+import com.famlog.core.network.ChangeRoleRequest
 import com.famlog.core.network.CreateGroupRequest
 import com.famlog.core.network.CurrentGroupRequest
 import com.famlog.core.network.GroupApi
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -114,8 +117,35 @@ class GroupRepository @Inject constructor(
     suspend fun issueInvite(groupId: Long): ApiResult<Invite> =
         caller.call { api.issueInvite(groupId) }.map { it.toModel() }
 
+    /** 권한 변경·그룹장 위임 (GRP-05). 성공하면 구성원 목록을 다시 받는다 (위임하면 내 역할도 바뀐다) */
+    suspend fun changeRole(groupId: Long, userId: Long, role: GroupRole): ApiResult<Unit> =
+        caller.call { api.changeRole(groupId, userId, ChangeRoleRequest(role.name)) }.map { }
+            .also { if (it is ApiResult.Success) afterMembersChanged(groupId) }
+
+    /** 내보내기 (GRP-05) */
+    suspend fun removeMember(groupId: Long, userId: Long): ApiResult<Unit> =
+        caller.call { api.removeMember(groupId, userId) }
+            .also { if (it is ApiResult.Success) afterMembersChanged(groupId) }
+
+    /** 나가기 (GRP-05). 성공하면 목록에서 빼고, 현재 그룹이었으면 비운다 (시작 분기가 다음 그룹을 고른다) */
+    suspend fun leave(groupId: Long): ApiResult<Unit> = caller.call { api.leave(groupId) }.also { if (it is ApiResult.Success) forget(groupId) }
+
+    /** 그룹 삭제 (그룹장) */
+    suspend fun deleteGroup(groupId: Long): ApiResult<Unit> = caller.call { api.delete(groupId) }.also { if (it is ApiResult.Success) forget(groupId) }
+
     /** 그룹 상세에서 내 구성원 정보. 로그인 정보가 없으면 null */
     suspend fun me(detail: GroupDetail): Member? = sessionStore.userId()?.let(detail::member)
+
+    private suspend fun afterMembersChanged(groupId: Long) {
+        detail(groupId)
+        refreshGroups()
+    }
+
+    private suspend fun forget(groupId: Long) {
+        _groups.update { list -> list.filterNot { it.id == groupId } }
+        _details.update { it - groupId }
+        if (sessionStore.currentGroupId.first() == groupId) sessionStore.saveCurrentGroup(null)
+    }
 
     private suspend fun enter(result: ApiResult<GroupDetail>) {
         if (result !is ApiResult.Success) return
