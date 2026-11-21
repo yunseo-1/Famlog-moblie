@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -12,6 +13,9 @@ import com.famlog.core.designsystem.UiText
 import com.famlog.core.designsystem.theme.FamLogTheme
 import com.famlog.core.model.Consent
 import com.famlog.feature.auth.RestoreDialog
+import com.famlog.feature.group.GroupStartContent
+import com.famlog.feature.group.GroupStartMode
+import com.famlog.feature.group.GroupStartUiState
 import com.famlog.feature.settings.AccountDeleteContent
 import com.famlog.feature.settings.AccountDeleteUiState
 import com.famlog.feature.settings.PrivacyContent
@@ -93,8 +97,25 @@ class AccountScreensTest {
             FamLogTheme { RestoreDialog(UiText.Plain("삭제 예정인 계정이에요. 12월 21일까지 복구할 수 있어요."), false, { restored = true }, {}) }
         }
 
-        compose.onNodeWithText("삭제 예정인 계정이에요. 12월 21일까지 복구할 수 있어요.\n계정을 복구하고 로그인할까요?").assertExists()
+        compose.onNodeWithText("계정을 복구할까요?").assertExists()
+        compose.onNodeWithText("삭제 예정인 계정이에요. 12월 21일까지 복구할 수 있어요.").assertExists()
         compose.onNodeWithText("복구하고 로그인").performClick()
         assertTrue(restored)
+    }
+
+    @Test
+    fun 그룹이_없는_첫_화면에도_설정으로_가는_길이_있다() {
+        var opened = false
+        compose.setContent {
+            FamLogTheme {
+                GroupStartContent(
+                    mode = GroupStartMode.CHOOSE, state = GroupStartUiState(), onBack = null, onModeChange = {},
+                    onNameChange = {}, onCodeChange = {}, onCreate = {}, onJoin = {}, onOpenSettings = { opened = true },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("설정").performClick()
+        assertTrue(opened)
     }
 }
