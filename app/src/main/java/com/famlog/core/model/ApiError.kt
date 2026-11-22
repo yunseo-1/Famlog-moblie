@@ -24,6 +24,9 @@ object ErrorCodes {
     const val NOT_FOUND = "NOT_FOUND"
     const val INVITE_EXPIRED = "INVITE_EXPIRED"
     const val RATE_LIMITED = "RATE_LIMITED"
+
+    /** 보낸 사진·동영상을 붙일 수 없다(정리 배치가 지움·처리 실패 등). 원본으로 다시 올리면 된다 */
+    const val MEDIA_UNAVAILABLE = "MEDIA_UNAVAILABLE"
     const val GROUP_LIMIT_EXCEEDED = "GROUP_LIMIT_EXCEEDED"
     const val GROUP_ROLE_REQUIRED = "GROUP_ROLE_REQUIRED"
 

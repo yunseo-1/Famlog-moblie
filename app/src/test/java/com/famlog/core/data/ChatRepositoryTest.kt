@@ -362,6 +362,69 @@ class ChatRepositoryTest {
         assertNull(request.body)
     }
 
+    private suspend fun uploadedPhotos(key: String) = dao.updateLocalMedia(
+        key,
+        testJson.encodeToString(
+            ListSerializer(LocalMediaJson.serializer()),
+            listOf(photo("p1").copy(mediaId = 31).toJson(), photo("p2").copy(mediaId = 32).toJson()),
+        ),
+    )
+
+    private suspend fun localMediaIds(key: String): List<Long?> = testJson
+        .decodeFromString(ListSerializer(LocalMediaJson.serializer()), dao.get(key)!!.localMediaJson!!)
+        .map { it.mediaId }
+
+    @Test
+    fun 붙일_수_없는_사진이면_media_id를_버리고_한_번은_원본으로_다시_올리고_또_실패하면_FAILED() = runTest {
+        repository.sendMedia(GROUP, listOf(photo("p1"), photo("p2")))
+        val key = messages().single().key
+        uploadedPhotos(key)
+        scheduler.scheduled.clear()
+        val error = event(ChatEventTypes.ERROR, """{"code":"MEDIA_UNAVAILABLE","message":"m","clientMessageId":"$key"}""")
+
+        assertFalse(repository.onUserEvent(error))
+        assertEquals(listOf(null, null), localMediaIds(key))
+        assertEquals(listOf(key), scheduler.scheduled)
+        assertEquals(SendState.SENDING, messages().single().sendState)
+
+        // 다시 올렸는데 또 붙일 수 없다 → 자동으로 반복하지 않고 [다시 보내기]를 맡긴다
+        uploadedPhotos(key)
+        scheduler.scheduled.clear()
+        repository.onUserEvent(error)
+        assertEquals(emptyList<String>(), scheduler.scheduled)
+        assertEquals(SendState.FAILED, messages().single().sendState)
+        assertEquals(listOf(null, null), localMediaIds(key))
+
+        // [다시 보내기]는 업로드부터 다시 한다
+        repository.retry(key)
+        assertEquals(listOf(key), scheduler.scheduled)
+    }
+
+    @Test
+    fun 형식_오류는_사진을_다시_올리지_않는다() = runTest {
+        repository.sendMedia(GROUP, listOf(photo("p1"), photo("p2")))
+        val key = messages().single().key
+        uploadedPhotos(key)
+        scheduler.scheduled.clear()
+
+        repository.onUserEvent(event(ChatEventTypes.ERROR, """{"code":"VALIDATION_FAILED","message":"m","clientMessageId":"$key"}"""))
+
+        assertEquals(listOf(31L, 32L), localMediaIds(key))
+        assertEquals(emptyList<String>(), scheduler.scheduled)
+        assertEquals(SendState.FAILED, messages().single().sendState)
+    }
+
+    @Test
+    fun 글_메시지가_MEDIA_UNAVAILABLE을_받으면_그냥_FAILED() = runTest {
+        repository.send(GROUP, "하나", replyTo = null)
+        val key = socket.sent.single().second.clientMessageId
+
+        repository.onUserEvent(event(ChatEventTypes.ERROR, """{"code":"MEDIA_UNAVAILABLE","message":"m","clientMessageId":"$key"}"""))
+
+        assertEquals(emptyList<String>(), scheduler.scheduled)
+        assertEquals(SendState.FAILED, messages().single().sendState)
+    }
+
     @Test
     fun 덜_올린_실패_메시지를_다시_보내면_업로드부터_다시_하고_지우면_작업도_취소한다() = runTest {
         repository.sendMedia(GROUP, listOf(video("v1")))
