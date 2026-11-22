@@ -65,6 +65,13 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
                 title = message.groupName,
                 text = context.getString(R.string.push_member_removed),
             )
+            is PushMessage.DataExportReady -> showSystem(
+                message = message,
+                tag = "export:${message.exportId}",
+                title = context.getString(R.string.push_data_export_title),
+                text = context.getString(R.string.push_data_export_text),
+                contentIntent = openDataExport(),
+            )
             is PushMessage.NewDeviceLogin -> showSystem(
                 message = message,
                 tag = "device:${message.sessionId}",
@@ -184,6 +191,20 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
         )
     }
 
+    /** 내보내기 준비 알림을 누르면 내 데이터 내보내기 화면으로 (MainActivity) */
+    private fun openDataExport(): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_DATA_EXPORT, true)
+        }
+        return PendingIntent.getActivity(
+            context,
+            REQUEST_DATA_EXPORT,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
     /** 앱을 연다. [groupId]가 있으면 시작 분기를 거친 뒤 그 채팅방으로 간다 (MainActivity) */
     private fun openApp(groupId: Long?): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -227,8 +248,12 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
         /** MainActivity가 읽는 일정 리마인드 탭 대상 */
         const val EXTRA_SCHEDULE_ID = "com.famlog.extra.SCHEDULE_ID"
 
+        /** MainActivity가 읽는 내보내기 준비 알림 탭 (ACC-02) */
+        const val EXTRA_DATA_EXPORT = "com.famlog.extra.DATA_EXPORT"
+
         /** 채팅 알림(그룹 ID)과 PendingIntent 요청 코드가 겹치지 않게 */
         private const val REQUEST_SCHEDULE_BASE = 1 shl 30
+        private const val REQUEST_DATA_EXPORT = (1 shl 30) - 1
 
         private val SeoulZone: ZoneId = ZoneId.of("Asia/Seoul")
         private val timeFormatter = DateTimeFormatter.ofPattern("a h:mm", Locale.KOREAN)

@@ -59,6 +59,7 @@ import com.famlog.feature.place.PlaceDetailScreen
 import com.famlog.feature.place.PlaceScreen
 import com.famlog.feature.place.PlaceSearchScreen
 import com.famlog.feature.settings.AccountDeleteScreen
+import com.famlog.feature.settings.DataExportScreen
 import com.famlog.feature.settings.GroupSettingsScreen
 import com.famlog.feature.settings.PrivacyScreen
 import com.famlog.feature.settings.SettingsScreen
@@ -116,6 +117,7 @@ fun FamlogNavHost(
                 navController.navigateToTab(TopLevelDestination.CALENDAR)
                 navController.navigate(ScheduleDetailRoute(target.scheduleId))
             }
+            OpenTarget.DataExport -> navController.navigate(DataExportRoute) { launchSingleTop = true }
         }
     }
 
@@ -203,9 +205,14 @@ fun FamlogNavHost(
                 SettingsScreen(onBack = { navController.popBackStack() }, onOpenPrivacy = { navController.navigate(PrivacyRoute) })
             }
             composable<PrivacyRoute> {
-                PrivacyScreen(onBack = { navController.popBackStack() }, onOpenAccountDelete = { navController.navigate(AccountDeleteRoute) })
+                PrivacyScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenDataExport = { navController.navigate(DataExportRoute) },
+                    onOpenAccountDelete = { navController.navigate(AccountDeleteRoute) },
+                )
             }
             composable<AccountDeleteRoute> { AccountDeleteScreen(onBack = { navController.popBackStack() }) }
+            composable<DataExportRoute> { DataExportScreen(onBack = { navController.popBackStack() }) }
             composable<GroupSettingsRoute> {
                 GroupSettingsScreen(
                     onBack = { navController.popBackStack() },

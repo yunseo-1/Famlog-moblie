@@ -122,4 +122,16 @@ class PushMessageTest {
         assertNull((PushMessage.parse(data - "title") as PushMessage.ScheduleReminder).title)
         assertNull(PushMessage.parse(data - "scheduleId"))
     }
+
+    @Test
+    fun 내보내기_준비_알림은_요청_ID만_읽고_없으면_무시한다() {
+        val data = mapOf("type" to "DATA_EXPORT_READY", "channel" to "SYSTEM", "exportId" to "12", "sentAt" to "2026-11-22T10:00:00+09:00", "silent" to "true")
+
+        val message = PushMessage.parse(data) as PushMessage.DataExportReady
+
+        assertEquals(12L, message.exportId)
+        assertEquals(PushChannel.SYSTEM, message.channel)
+        assertTrue(message.silent)
+        assertNull(PushMessage.parse(data - "exportId"))
+    }
 }

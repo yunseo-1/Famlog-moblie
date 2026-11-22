@@ -7,6 +7,7 @@ import com.famlog.core.model.AuthTokens
 import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.GroupRole
 import com.famlog.core.model.GroupSummary
+import com.famlog.core.network.ChatEventEnvelope
 import com.famlog.core.network.SessionEvents
 import com.famlog.core.network.SocketEvent
 import com.famlog.testing.FakeChatSocket
@@ -14,12 +15,15 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -32,6 +36,7 @@ class ChatSyncTest {
     private val candidates = mockk<CandidateRepository>(relaxed = true)
     private val groupList = MutableStateFlow(listOf(GroupSummary(1, "우리 가족", 2, GroupRole.OWNER)))
     private val groups = mockk<GroupRepository>(relaxed = true) { every { groups } returns groupList }
+    private val exports = mockk<DataExportRepository>(relaxed = true)
     private val tokens = FakeTokenStore(AuthTokens("access-1", "refresh-1"))
     private val sessionEvents = SessionEvents()
     private val network = MutableSharedFlow<Unit>()
@@ -40,7 +45,7 @@ class ChatSyncTest {
     }
 
     private fun TestScope.start(): ChatSync =
-        ChatSync(socket, chat, candidates, groups, tokens, sessionEvents, monitor, backgroundScope).also {
+        ChatSync(socket, chat, candidates, groups, exports, tokens, sessionEvents, monitor, backgroundScope).also {
             it.start()
             it.setForeground(true)
             runCurrent()
@@ -119,5 +124,15 @@ class ChatSyncTest {
 
         coVerify { chat.clear() }
         assertEquals(before + 1, socket.disconnectCount)
+    }
+
+    @Test
+    fun 내보내기_준비_이벤트가_오면_내보내기_저장소에_알린다() = runTest {
+        start()
+
+        socket.emit(SocketEvent.User(ChatEventEnvelope("data-export.ready", buildJsonObject { put("id", 9) })))
+        runCurrent()
+
+        verify { exports.onReady(9) }
     }
 }
