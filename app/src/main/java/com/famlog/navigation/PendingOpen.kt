@@ -16,6 +16,9 @@ sealed interface OpenTarget {
 
     /** 내보내기 준비 알림 → 내 데이터 내보내기 화면 (ACC-02) */
     data object DataExport : OpenTarget
+
+    /** 새 기기 로그인 알림 → 로그인 기기 관리 (AUTH-03) */
+    data object Sessions : OpenTarget
 }
 
 /**

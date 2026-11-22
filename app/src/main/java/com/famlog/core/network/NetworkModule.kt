@@ -160,6 +160,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideSessionApi(retrofit: Retrofit): SessionApi = retrofit.create(SessionApi::class.java)
+
+    @Provides
+    @Singleton
     fun provideDataExportApi(retrofit: Retrofit): DataExportApi = retrofit.create(DataExportApi::class.java)
 
     @Provides
