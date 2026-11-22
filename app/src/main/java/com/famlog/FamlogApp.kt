@@ -12,6 +12,7 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.famlog.core.data.AppLock
 import com.famlog.core.data.ChatSync
 import com.famlog.core.data.PushTokenRepository
 import com.famlog.core.push.PushNotifier
@@ -26,6 +27,8 @@ import javax.inject.Inject
 class FamlogApp : Application(), Configuration.Provider, SingletonImageLoader.Factory {
 
     @Inject lateinit var chatSync: ChatSync
+
+    @Inject lateinit var appLock: AppLock
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
 
@@ -54,16 +57,21 @@ class FamlogApp : Application(), Configuration.Provider, SingletonImageLoader.Fa
         pushNotifier.createChannels()
         // 실시간 채팅은 앱이 화면에 보이는 동안만 연결한다. 백그라운드 알림은 FCM(S11)
         chatSync.start()
+        appLock.start()
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 chatSync.setForeground(true)
+                appLock.onForeground()
                 if (!tokenRegistered) {
                     tokenRegistered = true
                     pushTokens.registerInBackground()
                 }
             }
 
-            override fun onStop(owner: LifecycleOwner) = chatSync.setForeground(false)
+            override fun onStop(owner: LifecycleOwner) {
+                chatSync.setForeground(false)
+                appLock.onBackground()
+            }
         })
     }
 

@@ -37,6 +37,7 @@ class AuthRepository @Inject constructor(
     private val messageDao: MessageDao,
     private val pushTokens: PushTokenRepository,
     private val sessionEvents: SessionEvents,
+    private val appLock: AppLock,
     @DeviceName private val deviceName: String,
 ) {
 
@@ -60,6 +61,8 @@ class AuthRepository @Inject constructor(
     private suspend fun signOutLocally() {
         tokenStore.clear()
         messageDao.clear()
+        // 다음에 이 기기로 로그인하는 사람이 이전 잠금 설정에 묶이지 않게
+        appLock.setEnabled(false)
         sessionEvents.notifyLoggedOut()
     }
 

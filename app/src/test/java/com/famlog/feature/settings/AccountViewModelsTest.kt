@@ -2,6 +2,7 @@ package com.famlog.feature.settings
 
 import app.cash.turbine.test
 import com.famlog.R
+import com.famlog.core.data.AppLock
 import com.famlog.core.data.AuthRepository
 import com.famlog.core.data.ConsentRepository
 import com.famlog.core.designsystem.UiText
@@ -28,12 +29,13 @@ class AccountViewModelsTest {
 
     private val auth = mockk<AuthRepository>(relaxed = true)
     private val consents = mockk<ConsentRepository>()
+    private val appLock = mockk<AppLock>(relaxed = true)
 
     private fun consent(type: String, agreed: Boolean = true) = Consent(type, agreed, "1.0".takeIf { agreed }, "1.0", false)
 
     @Test
     fun 로그아웃은_확인한_뒤에만_한다() = runTest(mainRule.dispatcher) {
-        val viewModel = SettingsViewModel(auth, "1.0")
+        val viewModel = SettingsViewModel(auth, appLock, "1.0")
 
         viewModel.askLogout()
         assertTrue(viewModel.confirmLogout.value)
@@ -44,6 +46,19 @@ class AccountViewModelsTest {
         viewModel.logout()
         coVerify(exactly = 1) { auth.logout() }
         assertFalse(viewModel.confirmLogout.value)
+    }
+
+    @Test
+    fun 앱_잠금은_화면이_기기_인증을_받은_뒤_켜고_끈다() = runTest(mainRule.dispatcher) {
+        val viewModel = SettingsViewModel(auth, appLock, "1.0")
+
+        viewModel.setAppLock(true)
+        viewModel.setAppLock(false)
+
+        coVerify(ordering = io.mockk.Ordering.ORDERED) {
+            appLock.setEnabled(true)
+            appLock.setEnabled(false)
+        }
     }
 
     @Test
