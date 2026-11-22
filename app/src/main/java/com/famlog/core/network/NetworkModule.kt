@@ -160,6 +160,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideNotificationSettingsApi(retrofit: Retrofit): NotificationSettingsApi = retrofit.create(NotificationSettingsApi::class.java)
+
+    @Provides
+    @Singleton
     fun provideSessionApi(retrofit: Retrofit): SessionApi = retrofit.create(SessionApi::class.java)
 
     @Provides

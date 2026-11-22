@@ -52,10 +52,21 @@ import com.famlog.core.model.Consent
 
 /** 설정 (SCR-80, 채팅 탭 앱바 톱니바퀴). 알림·앱 잠금은 다음 단계(SET-02·SEC-01) */
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenPrivacy: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onOpenPrivacy: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val confirmLogout by viewModel.confirmLogout.collectAsStateWithLifecycle()
     val loggingOut by viewModel.loggingOut.collectAsStateWithLifecycle()
-    SettingsContent(appVersion = viewModel.appVersion, onBack = onBack, onOpenPrivacy = onOpenPrivacy, onLogout = viewModel::askLogout)
+    SettingsContent(
+        appVersion = viewModel.appVersion,
+        onBack = onBack,
+        onOpenPrivacy = onOpenPrivacy,
+        onLogout = viewModel::askLogout,
+        onOpenNotifications = onOpenNotifications,
+    )
     if (confirmLogout) {
         ConfirmDialog(
             title = stringResource(R.string.settings_logout_title),
@@ -69,11 +80,18 @@ fun SettingsScreen(onBack: () -> Unit, onOpenPrivacy: () -> Unit, viewModel: Set
 }
 
 @Composable
-fun SettingsContent(appVersion: String, onBack: () -> Unit, onOpenPrivacy: () -> Unit, onLogout: () -> Unit) {
+fun SettingsContent(
+    appVersion: String,
+    onBack: () -> Unit,
+    onOpenPrivacy: () -> Unit,
+    onLogout: () -> Unit,
+    onOpenNotifications: () -> Unit = {},
+) {
     val colors = FamTheme.colors
     Column(Modifier.fillMaxSize().background(colors.bgDefault)) {
         FamTopBar(onBack = onBack, title = stringResource(R.string.settings_title))
         Column(Modifier.padding(horizontal = FamDimens.screenPadding)) {
+            NavRow(stringResource(R.string.settings_notifications), onOpenNotifications)
             NavRow(stringResource(R.string.settings_privacy), onOpenPrivacy)
             HorizontalDivider(color = colors.borderDefault, modifier = Modifier.padding(vertical = FamDimens.sm))
             NavRow(stringResource(R.string.settings_logout), onLogout)

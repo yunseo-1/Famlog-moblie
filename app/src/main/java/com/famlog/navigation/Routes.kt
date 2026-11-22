@@ -42,6 +42,7 @@ import kotlinx.serialization.Serializable
 @Serializable data object AccountDeleteRoute
 @Serializable data object DataExportRoute
 @Serializable data object SessionsRoute
+@Serializable data object NotificationSettingsRoute
 
 /** 그룹 설정 (채팅방 서랍 → 그룹 설정, SET-01) */
 @Serializable data class GroupSettingsRoute(val groupId: Long)

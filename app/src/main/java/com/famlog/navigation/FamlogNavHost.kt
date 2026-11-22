@@ -60,6 +60,7 @@ import com.famlog.feature.place.PlaceScreen
 import com.famlog.feature.place.PlaceSearchScreen
 import com.famlog.feature.settings.AccountDeleteScreen
 import com.famlog.feature.settings.DataExportScreen
+import com.famlog.feature.settings.NotificationSettingsScreen
 import com.famlog.feature.settings.SessionsScreen
 import com.famlog.feature.settings.GroupSettingsScreen
 import com.famlog.feature.settings.PrivacyScreen
@@ -204,7 +205,11 @@ fun FamlogNavHost(
                 )
             }
             composable<SettingsRoute> {
-                SettingsScreen(onBack = { navController.popBackStack() }, onOpenPrivacy = { navController.navigate(PrivacyRoute) })
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenNotifications = { navController.navigate(NotificationSettingsRoute) },
+                    onOpenPrivacy = { navController.navigate(PrivacyRoute) },
+                )
             }
             composable<PrivacyRoute> {
                 PrivacyScreen(
@@ -217,6 +222,7 @@ fun FamlogNavHost(
             composable<AccountDeleteRoute> { AccountDeleteScreen(onBack = { navController.popBackStack() }) }
             composable<DataExportRoute> { DataExportScreen(onBack = { navController.popBackStack() }) }
             composable<SessionsRoute> { SessionsScreen(onBack = { navController.popBackStack() }) }
+            composable<NotificationSettingsRoute> { NotificationSettingsScreen(onBack = { navController.popBackStack() }) }
             composable<GroupSettingsRoute> {
                 GroupSettingsScreen(
                     onBack = { navController.popBackStack() },
