@@ -21,6 +21,9 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,6 +40,7 @@ class ChatSync @Inject constructor(
     private val chatRepository: ChatRepository,
     private val candidateRepository: CandidateRepository,
     private val groupRepository: GroupRepository,
+    private val dataExportRepository: DataExportRepository,
     private val tokenStore: TokenStore,
     private val sessionEvents: SessionEvents,
     private val networkMonitor: NetworkMonitor,
@@ -141,6 +145,9 @@ class ChatSync @Inject constructor(
             is SocketEvent.User -> when (event.event.type) {
                 // 다른 기기에서 이 세션을 로그아웃시켰다 → REST가 401 AUTH_INVALID를 받아 로그인 화면으로 간다
                 ChatEventTypes.SESSION_REVOKED -> groupRepository.refreshGroups()
+                // 내 데이터 내보내기 ZIP이 준비됐다 → 내보내기 화면이 떠 있으면 바로 갱신 (ACC-02)
+                ChatEventTypes.DATA_EXPORT_READY ->
+                    ((event.event.data as? JsonObject)?.get("id") as? JsonPrimitive)?.longOrNull?.let(dataExportRepository::onReady)
                 else -> if (chatRepository.onUserEvent(event.event)) {
                     scope.launch {
                         delay(RATE_LIMIT_RETRY_MS)

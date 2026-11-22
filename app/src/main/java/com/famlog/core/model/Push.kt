@@ -72,11 +72,19 @@ sealed interface PushMessage {
         override val silent: Boolean,
     ) : PushMessage
 
+    /** 내 데이터 내보내기 ZIP이 준비됐다 (ACC-02). 본문 키는 없다 */
+    data class DataExportReady(
+        val exportId: Long,
+        override val channel: PushChannel,
+        override val silent: Boolean,
+    ) : PushMessage
+
     companion object {
         const val TYPE_CHAT_MESSAGE = "CHAT_MESSAGE"
         const val TYPE_MEMBER_REMOVED = "MEMBER_REMOVED"
         const val TYPE_NEW_DEVICE_LOGIN = "NEW_DEVICE_LOGIN"
         const val TYPE_SCHEDULE_REMINDER = "SCHEDULE_REMINDER"
+        const val TYPE_DATA_EXPORT_READY = "DATA_EXPORT_READY"
 
         fun parse(data: Map<String, String>): PushMessage? {
             val channel = PushChannel.of(data["channel"])
@@ -115,6 +123,11 @@ sealed interface PushMessage {
                     sessionId = data["sessionId"]?.toLongOrNull(),
                     platform = data["platform"],
                     deviceName = data["deviceName"]?.takeIf { it.isNotBlank() },
+                    channel = channel,
+                    silent = silent,
+                )
+                TYPE_DATA_EXPORT_READY -> DataExportReady(
+                    exportId = data["exportId"]?.toLongOrNull() ?: return null,
                     channel = channel,
                     silent = silent,
                 )

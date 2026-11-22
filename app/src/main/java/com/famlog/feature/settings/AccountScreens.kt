@@ -89,9 +89,14 @@ fun SettingsContent(appVersion: String, onBack: () -> Unit, onOpenPrivacy: () ->
 
 // ---- SCR-81 개인정보·보안 ----
 
-/** 개인정보·보안 (SCR-81): 동의 내역(철회), 웹 계정 삭제 안내, 계정 삭제. 로그인 기기·내보내기는 다음 단계 */
+/** 개인정보·보안 (SCR-81): 동의 내역(철회), 내 데이터 내보내기, 웹 계정 삭제 안내, 계정 삭제. 로그인 기기는 다음 단계 */
 @Composable
-fun PrivacyScreen(onBack: () -> Unit, onOpenAccountDelete: () -> Unit, viewModel: PrivacyViewModel = hiltViewModel()) {
+fun PrivacyScreen(
+    onBack: () -> Unit,
+    onOpenDataExport: () -> Unit,
+    onOpenAccountDelete: () -> Unit,
+    viewModel: PrivacyViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -104,6 +109,7 @@ fun PrivacyScreen(onBack: () -> Unit, onOpenAccountDelete: () -> Unit, viewModel
         onOpenWebDeletion = {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(viewModel.webDeletionUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         },
+        onOpenDataExport = onOpenDataExport,
         onOpenAccountDelete = onOpenAccountDelete,
         snackbarHostState = snackbarHostState,
     )
@@ -127,6 +133,7 @@ fun PrivacyContent(
     onWithdraw: (String) -> Unit,
     onOpenWebDeletion: () -> Unit,
     onOpenAccountDelete: () -> Unit,
+    onOpenDataExport: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val colors = FamTheme.colors
@@ -158,6 +165,7 @@ fun PrivacyContent(
                 }
                 HorizontalDivider(color = colors.borderDefault, modifier = Modifier.padding(vertical = FamDimens.sm))
                 SectionHeading(stringResource(R.string.privacy_account))
+                NavRow(stringResource(R.string.privacy_data_export), onOpenDataExport)
                 NavRow(stringResource(R.string.privacy_web_deletion), onOpenWebDeletion)
                 NavRow(stringResource(R.string.privacy_delete_account), onOpenAccountDelete, danger = true)
             }

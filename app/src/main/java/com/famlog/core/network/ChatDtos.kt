@@ -110,6 +110,9 @@ object ChatEventTypes {
     const val SESSION_REVOKED = "session.revoked"
     const val CANDIDATE_CREATED = "candidate.created"
     const val CANDIDATE_RESOLVED = "candidate.resolved"
+
+    /** 내 데이터 내보내기 ZIP이 준비됐다 (/user/queue/events) */
+    const val DATA_EXPORT_READY = "data-export.ready"
 }
 
 fun parseServerTime(value: String): Instant = OffsetDateTime.parse(value).toInstant()

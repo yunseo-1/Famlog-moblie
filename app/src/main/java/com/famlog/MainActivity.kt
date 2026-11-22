@@ -46,8 +46,10 @@ class MainActivity : ComponentActivity() {
         when {
             groupId > 0 -> pendingOpen.open(OpenTarget.Chat(groupId))
             scheduleId > 0 -> pendingOpen.open(OpenTarget.Schedule(scheduleId))
+            intent.getBooleanExtra(PushNotifier.EXTRA_DATA_EXPORT, false) -> pendingOpen.open(OpenTarget.DataExport)
         }
         intent.removeExtra(PushNotifier.EXTRA_GROUP_ID)
         intent.removeExtra(PushNotifier.EXTRA_SCHEDULE_ID)
+        intent.removeExtra(PushNotifier.EXTRA_DATA_EXPORT)
     }
 }

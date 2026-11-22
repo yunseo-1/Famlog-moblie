@@ -13,6 +13,9 @@ sealed interface OpenTarget {
 
     /** 일정 리마인드 → 그 일정 상세 (SCH-03) */
     data class Schedule(val scheduleId: Long) : OpenTarget
+
+    /** 내보내기 준비 알림 → 내 데이터 내보내기 화면 (ACC-02) */
+    data object DataExport : OpenTarget
 }
 
 /**
