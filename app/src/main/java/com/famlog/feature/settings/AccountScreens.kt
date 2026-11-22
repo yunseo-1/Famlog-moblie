@@ -1,5 +1,7 @@
 package com.famlog.feature.settings
 
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -24,12 +26,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.famlog.R
@@ -47,6 +54,7 @@ import com.famlog.core.designsystem.component.FamTopBar
 import com.famlog.core.designsystem.theme.FamDimens
 import com.famlog.core.designsystem.theme.FamTheme
 import com.famlog.core.model.Consent
+import com.famlog.core.security.DeviceAuth
 
 // ---- SCR-80 설정 ----
 
@@ -60,13 +68,40 @@ fun SettingsScreen(
 ) {
     val confirmLogout by viewModel.confirmLogout.collectAsStateWithLifecycle()
     val loggingOut by viewModel.loggingOut.collectAsStateWithLifecycle()
+    val appLockEnabled by viewModel.appLockEnabled.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var noDeviceLock by remember { mutableStateOf(false) }
     SettingsContent(
         appVersion = viewModel.appVersion,
         onBack = onBack,
         onOpenPrivacy = onOpenPrivacy,
         onLogout = viewModel::askLogout,
         onOpenNotifications = onOpenNotifications,
+        appLockEnabled = appLockEnabled,
+        onAppLockChange = { enable ->
+            val activity = context.findActivity()
+            when {
+                // 휴대폰에 화면 잠금이 없으면 풀 방법이 없다
+                !DeviceAuth.available(context) -> noDeviceLock = true
+                activity != null -> DeviceAuth.authenticate(
+                    activity,
+                    context.getString(if (enable) R.string.app_lock_turn_on else R.string.app_lock_turn_off),
+                    context.getString(R.string.app_lock_prompt_subtitle),
+                ) { ok -> if (ok) viewModel.setAppLock(enable) }
+            }
+        },
     )
+    if (noDeviceLock) {
+        AlertDialog(
+            onDismissRequest = { noDeviceLock = false },
+            title = { Text(stringResource(R.string.app_lock_no_device_lock_title)) },
+            text = { Text(stringResource(R.string.app_lock_no_device_lock_body), style = FamTheme.type.bodyMedium, color = FamTheme.colors.textPrimary) },
+            confirmButton = {
+                TextButton(onClick = { noDeviceLock = false }) { Text(stringResource(R.string.group_settings_ok), color = FamTheme.colors.brandPrimary) }
+            },
+            containerColor = FamTheme.colors.bgDefault,
+        )
+    }
     if (confirmLogout) {
         ConfirmDialog(
             title = stringResource(R.string.settings_logout_title),
@@ -86,6 +121,8 @@ fun SettingsContent(
     onOpenPrivacy: () -> Unit,
     onLogout: () -> Unit,
     onOpenNotifications: () -> Unit = {},
+    appLockEnabled: Boolean = false,
+    onAppLockChange: (Boolean) -> Unit = {},
 ) {
     val colors = FamTheme.colors
     Column(Modifier.fillMaxSize().background(colors.bgDefault)) {
@@ -93,6 +130,25 @@ fun SettingsContent(
         Column(Modifier.padding(horizontal = FamDimens.screenPadding)) {
             NavRow(stringResource(R.string.settings_notifications), onOpenNotifications)
             NavRow(stringResource(R.string.settings_privacy), onOpenPrivacy)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = FamDimens.minTouchTarget)
+                    .toggleable(value = appLockEnabled, role = Role.Switch, onValueChange = onAppLockChange)
+                    .padding(vertical = FamDimens.sm),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(FamDimens.md),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.app_lock_title), style = FamTheme.type.bodyLarge, color = colors.textPrimary)
+                    Text(stringResource(R.string.app_lock_desc), style = FamTheme.type.caption, color = colors.textTertiary)
+                }
+                Switch(
+                    checked = appLockEnabled,
+                    onCheckedChange = null,
+                    colors = SwitchDefaults.colors(checkedTrackColor = colors.brandPrimary),
+                )
+            }
             HorizontalDivider(color = colors.borderDefault, modifier = Modifier.padding(vertical = FamDimens.sm))
             NavRow(stringResource(R.string.settings_logout), onLogout)
             Text(
@@ -375,4 +431,11 @@ private fun ConfirmDialog(title: String, body: String, confirm: String, busy: Bo
         },
         containerColor = colors.bgDefault,
     )
+}
+
+/** BiometricPrompt는 FragmentActivity가 필요하다. Compose의 Context는 감싸여 있을 수 있다 */
+private fun Context.findActivity(): FragmentActivity? = when (this) {
+    is FragmentActivity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

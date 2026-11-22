@@ -583,6 +583,16 @@
     <string name="consent_ai">AI 분석 안내 확인</string>
     <string name="consent_overseas">개인정보 국외 이전 고지</string>
     <string name="settings_notifications">알림</string>
+    <string name="app_lock_title">앱 잠금</string>
+    <string name="app_lock_desc">앱을 열 때와 1분 넘게 나갔다 올 때 지문·얼굴이나 휴대폰 잠금으로 풀어요.</string>
+    <string name="app_lock_turn_on">앱 잠금 켜기</string>
+    <string name="app_lock_turn_off">앱 잠금 끄기</string>
+    <string name="app_lock_no_device_lock_title">휴대폰 화면 잠금을 먼저 설정해 주세요</string>
+    <string name="app_lock_no_device_lock_body">앱 잠금은 휴대폰의 지문·얼굴이나 화면 잠금(PIN·패턴)으로 풀어요. 휴대폰 설정에서 화면 잠금을 켠 뒤 다시 시도해 주세요.</string>
+    <string name="app_lock_locked">FamLog가 잠겨 있어요</string>
+    <string name="app_lock_unlock">잠금 해제</string>
+    <string name="app_lock_prompt_title">FamLog 잠금 해제</string>
+    <string name="app_lock_prompt_subtitle">지문·얼굴이나 휴대폰 잠금으로 확인해요</string>
     <string name="notif_title">알림</string>
     <string name="notif_failed">알림 설정을 불러오지 못했어요.</string>
     <string name="notif_content">알림 내용</string>

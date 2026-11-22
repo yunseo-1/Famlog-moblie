@@ -97,6 +97,7 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation(libs.kakao.sdk.user)
     implementation(libs.kakao.map)
+    implementation(libs.androidx.biometric)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)

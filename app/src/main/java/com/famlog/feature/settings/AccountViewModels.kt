@@ -3,6 +3,7 @@ package com.famlog.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.famlog.R
+import com.famlog.core.data.AppLock
 import com.famlog.core.data.AuthRepository
 import com.famlog.core.data.ConsentRepository
 import com.famlog.core.designsystem.UiText
@@ -28,8 +29,17 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val appLock: AppLock,
     @AppVersion val appVersion: String,
 ) : ViewModel() {
+
+    /** 앱 잠금 (SEC-01) */
+    val appLockEnabled: StateFlow<Boolean> = appLock.enabled
+
+    /** 화면이 기기 인증에 성공한 뒤 부른다. 켤 때 지금은 이미 푼 상태라 바로 잠그지 않는다 */
+    fun setAppLock(enabled: Boolean) {
+        viewModelScope.launch { appLock.setEnabled(enabled) }
+    }
 
     private val _confirmLogout = MutableStateFlow(false)
     val confirmLogout: StateFlow<Boolean> = _confirmLogout.asStateFlow()

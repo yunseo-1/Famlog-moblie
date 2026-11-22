@@ -19,6 +19,7 @@ import com.famlog.testing.jsonResponse
 import com.famlog.testing.testApiCaller
 import com.famlog.testing.testJson
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
@@ -40,13 +41,14 @@ class AuthRepositoryTest {
     private val messageDao = FakeMessageDao()
     private val pushTokens = mockk<PushTokenRepository>(relaxed = true)
     private val sessionEvents = SessionEvents()
+    private val appLock = mockk<AppLock>(relaxed = true)
     private lateinit var repository: AuthRepository
 
     @Before
     fun setUp() {
         server.start()
         repository = AuthRepository(
-            server.api<AccountApi>(), testApiCaller(), tokenStore, session, deviceId, messageDao, pushTokens, sessionEvents,
+            server.api<AccountApi>(), testApiCaller(), tokenStore, session, deviceId, messageDao, pushTokens, sessionEvents, appLock,
             "Google Pixel 9",
         )
     }
@@ -163,6 +165,8 @@ class AuthRepositoryTest {
         assertEquals("""{"refreshToken":"refresh-1"}""", request.body.readUtf8())
         assertNull(tokenStore.tokens)
         assertEquals(1, messageDao.clearCount)
+        // 다음 사람이 이전 앱 잠금에 묶이지 않게
+        coVerify { appLock.setEnabled(false) }
     }
 
     @Test

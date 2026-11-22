@@ -18,6 +18,10 @@ interface AppPrefs {
     /** 마지막으로 본 공지의 noticeUpdatedAt (SCR-00). 같은 공지는 다시 띄우지 않는다 */
     suspend fun seenNoticeUpdatedAt(): String?
     suspend fun setSeenNoticeUpdatedAt(value: String?)
+
+    /** 앱 잠금(SEC-01). 로그아웃하면 끈다 */
+    suspend fun appLockEnabled(): Boolean
+    suspend fun setAppLockEnabled(enabled: Boolean)
 }
 
 @Singleton
@@ -37,8 +41,15 @@ class DataStoreAppPrefs @Inject constructor(
         dataStore.edit { if (value == null) it.remove(SEEN_NOTICE_UPDATED_AT) else it[SEEN_NOTICE_UPDATED_AT] = value }
     }
 
+    override suspend fun appLockEnabled(): Boolean = dataStore.data.first()[APP_LOCK_ENABLED] == true
+
+    override suspend fun setAppLockEnabled(enabled: Boolean) {
+        dataStore.edit { it[APP_LOCK_ENABLED] = enabled }
+    }
+
     private companion object {
         val NOTIFICATION_PROMPT_SHOWN = booleanPreferencesKey("notification_prompt_shown")
         val SEEN_NOTICE_UPDATED_AT = stringPreferencesKey("seen_notice_updated_at")
+        val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
     }
 }
