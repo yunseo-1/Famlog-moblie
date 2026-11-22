@@ -75,6 +75,10 @@ class ChatRepository @Inject constructor(
     private val sentReadSeq = mutableMapOf<Long, Long>()
     private val readLock = Mutex()
 
+    /** MEDIA_UNAVAILABLE로 한 번 자동으로 다시 올린 메시지. 또 실패하면 [다시 보내기]를 맡긴다 (앱을 켜 둔 동안만) */
+    private val reuploaded = mutableSetOf<String>()
+    private val reuploadLock = Mutex()
+
     /** 서버 메시지 저장과 읽음 반영이 겹치지 않게 한다 ([store]) */
     private val unreadLock = Mutex()
 
@@ -134,8 +138,23 @@ class ChatRepository @Inject constructor(
         if (entity.hasPendingUploads()) uploadScheduler.schedule(key) else trySend(entity)
     }
 
+    /**
+     * 서버가 지운 업로드 등으로 media id를 쓸 수 없다. id를 비워 [다시 보내기]가 업로드부터 하게 하고,
+     * 이 메시지에서 처음이면 바로 다시 올린다(끝나면 [sendIfReady]가 같은 clientMessageId로 보낸다). 다시 올렸으면 true
+     */
+    private suspend fun reuploadMedia(key: String): Boolean {
+        val entity = dao.get(key)?.takeIf { it.seq == null } ?: return false
+        val local = entity.localMediaJson?.let { decode(LOCAL_MEDIA_SERIALIZER, it) }?.takeIf { it.isNotEmpty() } ?: return false
+        dao.updateLocalMedia(key, encode(LOCAL_MEDIA_SERIALIZER, local.map { it.copy(mediaId = null) }))
+        if (!reuploadLock.withLock { reuploaded.add(key) }) return false
+        dao.updateSendState(key, SendState.SENDING.name)
+        uploadScheduler.schedule(key)
+        return true
+    }
+
     /** 보내지 못한 메시지를 지운다 */
     suspend fun discard(key: String) {
+        reuploadLock.withLock { reuploaded.remove(key) }
         uploadScheduler.cancel(key)
         dao.deletePending(key)
     }
@@ -216,6 +235,7 @@ class ChatRepository @Inject constructor(
     /**
      * /user/queue/events 개인 이벤트. 재전송 확인(message.created)은 캐시에 넣고, 전송 실패는 FAILED로 바꾼다.
      * 전송 제한(RATE_LIMITED)은 SENDING으로 두고 true를 돌려준다 → 잠시 뒤 [flushPending].
+     * 붙일 수 없는 사진·동영상(MEDIA_UNAVAILABLE)은 받아 둔 media id를 버리고, 처음이면 원본으로 다시 올려 보낸다.
      */
     suspend fun onUserEvent(event: ChatEventEnvelope): Boolean {
         when (event.type) {
@@ -224,6 +244,7 @@ class ChatRepository @Inject constructor(
                 val error = event.decode(ChatErrorEvent.serializer()) ?: return false
                 val clientMessageId = error.clientMessageId ?: return false
                 if (error.code == ErrorCodes.RATE_LIMITED) return true
+                if (error.code == ErrorCodes.MEDIA_UNAVAILABLE && reuploadMedia(clientMessageId)) return false
                 dao.updateSendState(clientMessageId, SendState.FAILED.name)
             }
         }
