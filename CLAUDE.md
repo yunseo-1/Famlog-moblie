@@ -64,14 +64,16 @@ Famlog/
 │     │  ├ navigation/    시작 분기(StartRoute), 하단 탭 5개, 그룹 전환 시트, 세션 만료 시 로그인 이동
 │     │  ├ core/model/    순수 Kotlin 모델 (AuthTokens, ApiError, ErrorCodes, ApiResult, Group·Member)
 │     │  ├ core/common/   디스패처·앱 범위 CoroutineScope·Clock(서울)·기기 이름·네트워크 복구 알림
-│     │  ├ core/datastore/  TokenStore(Keystore AES-GCM 암호화), SessionStore(사용자 ID·현재 그룹), DeviceIdProvider
-│     │  ├ core/data/     Repository(Auth, Group, Chat, PushToken, Schedule, Todo), ChatSync(실시간 연결·재연결), MediaUploader, StartResolver, AgePolicy — Android 의존성 없음
+│     │  ├ core/datastore/  TokenStore(Keystore AES-GCM 암호화), SessionStore(사용자 ID·현재 그룹), DeviceIdProvider, AppPrefs(기기 설정·앱 잠금)
+│     │  ├ core/data/     Repository(Auth, Group, Chat, Candidate, Place, Schedule, Todo, PushToken, Consent, GroupSettings, Report, AppConfig, DataExport, Session, NotificationSettings), ChatSync(실시간 연결·재연결), MediaUploader, StartResolver, AgePolicy, AppLock(잠글지 판단) — Android 의존성 없음
 │     │  ├ core/database/ Room 로컬 캐시(채팅 메시지). 서버가 원본이라 스키마가 바뀌면 지우고 다시 받는다
 │     │  ├ core/media/    사진·동영상 업로드 작업(WorkManager), Photo Picker 파일 검사·읽기
 │     │  ├ core/push/     FCM 수신 서비스, 알림 채널·표시(PushNotifier)
+│     │  ├ core/location/ 대략적 위치 가져오기(내 주변 장소)
+│     │  ├ core/security/ 기기 인증(BiometricPrompt: 생체·휴대폰 화면 잠금, 앱 잠금 SEC-01)
 │     │  ├ core/network/  Retrofit·OkHttp, AuthInterceptor, TokenAuthenticator(재발급 1회 동기화), SessionEvents, ChatSocket(STOMP 직접 구현)
 │     │  ├ core/designsystem/  theme/FamTheme.kt(토큰), component/(FamAppBar, FamBottomNav, …)
-│     │  └ feature/{auth,group,chat,calendar,place,album,story,settings}/  화면 (settings: 그룹 설정·AI 분석 안내, S20-1)
+│     │  └ feature/{auth,group,chat,calendar,place,album,story,report,settings}/  화면 (report: 신고 시트, settings: 설정·알림·개인정보·로그인 기기·내보내기·계정 삭제·그룹 설정·앱 잠금)
 │     ├ debug/          로컬 서버 평문 허용, 요청 로그(BASIC), EXIF 검증 화면 — 릴리스에 포함 안 됨
 │     └ release/        빌드 타입별 네트워크 모듈 (로그 없음)
 ├ gradle/, build.gradle.kts, settings.gradle.kts   (버전은 gradle/libs.versions.toml)
