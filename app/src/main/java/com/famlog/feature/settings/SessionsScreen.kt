@@ -144,11 +144,14 @@ private fun SessionRow(session: LoginSession, now: Instant, onRevoke: (LoginSess
                     )
                 }
             }
-            Text(
-                stringResource(R.string.sessions_last_used, lastUsedText(session.lastUsedAt, now).asString()),
-                style = FamTheme.type.caption,
-                color = colors.textSecondary,
-            )
+            // 이 기기는 지금 쓰는 중이라 "마지막 사용"이 의미 없다 ("이 기기" 표시로 충분)
+            if (!session.current) {
+                Text(
+                    stringResource(R.string.sessions_last_used, lastUsedText(session.lastUsedAt, now).asString()),
+                    style = FamTheme.type.caption,
+                    color = colors.textSecondary,
+                )
+            }
             Text(
                 stringResource(R.string.sessions_created, sessionDay(session.createdAt)),
                 style = FamTheme.type.caption,

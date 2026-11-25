@@ -84,6 +84,11 @@ class GroupRepository @Inject constructor(
         }
     }
 
+    /** 로그아웃: 다음 로그인의 목록이 새 값으로 들어와야 실시간 연결이 다시 깨어난다 */
+    fun clear() {
+        _groups.value = emptyList()
+    }
+
     /** 채팅방에서 끝까지 읽었다 */
     fun clearUnread(groupId: Long) {
         _groups.update { list -> list.map { if (it.id == groupId) it.copy(unreadCount = 0) else it } }

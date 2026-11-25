@@ -127,6 +127,23 @@ class ChatSyncTest {
     }
 
     @Test
+    fun 로그아웃_후_같은_계정으로_다시_로그인하면_다시_연결한다() = runTest {
+        every { groups.clear() } answers { groupList.value = emptyList() }
+        start()
+        val group = groupList.value
+
+        tokens.clear()
+        sessionEvents.notifyLoggedOut()
+        socket.emit(SocketEvent.Closed(null))
+        advanceTimeBy(60_000) // 재연결 대기를 지나 토큰 없음으로 깨우기를 기다리는 상태
+        tokens.save(AuthTokens("access-2", "refresh-2"))
+        groupList.value = group // 로그인 직후 refreshGroups가 같은 목록을 받은 셈
+        runCurrent()
+
+        assertEquals("access-2", socket.connectTokens.last())
+    }
+
+    @Test
     fun 내보내기_준비_이벤트가_오면_내보내기_저장소에_알린다() = runTest {
         start()
 
