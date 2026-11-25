@@ -43,7 +43,9 @@ android {
     buildTypes {
         debug {
             // 에뮬레이터에서 로컬 서버(bootRun) 접속. 평문 HTTP는 src/debug network security config에서만 허용
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/api/v1/\"")
+            // 실기기(USB + adb reverse tcp:8080 tcp:8080)는 local.properties FAMLOG_API_BASE_URL=http://localhost:8080/api/v1/
+            val apiBaseUrl = secret("FAMLOG_API_BASE_URL").ifBlank { "http://10.0.2.2:8080/api/v1/" }
+            buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
         }
         release {
             // TODO(S22): 운영 서버 주소 확정 후 교체
