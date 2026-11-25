@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 디버그 빌드에만 합쳐지는 매니페스트: 로컬 서버 평문 허용, EXIF 검증 화면 (S6) -->
+<!-- 디버그 빌드에만 합쳐지는 매니페스트: 로컬 네트워크 권한, EXIF 검증 화면 (S6) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- EXIF 검증용. Photo Picker 사진의 GPS가 이 권한에 따라 달라지는지 확인한다 -->
@@ -11,7 +11,8 @@
     -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
-    <application android:networkSecurityConfig="@xml/network_security_config">
+    <!-- 평문 허용은 src/debug/res/xml/network_security_config.xml이 main의 같은 이름 파일을 덮어써서 적용된다 -->
+    <application>
         <activity
             android:name=".debug.ExifSpikeActivity"
             android:exported="true"

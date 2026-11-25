@@ -79,6 +79,7 @@ Famlog/
 │     └ release/        빌드 타입별 네트워크 모듈 (로그 없음)
 ├ gradle/, build.gradle.kts, settings.gradle.kts   (버전은 gradle/libs.versions.toml)
 ├ .github/workflows/android.yml  PR·main push마다 assembleDebug + testDebugUnitTest
+├ .github/workflows/release.yml  수동·v* 태그 → 서명 AAB → Play 내부 테스트 트랙
 ├ CLAUDE.md, .mcp.json  이 파일, MCP 서버 설정 (Figma, Notion)
 └ docs/                spec/(사양서 사본), design/, handoff/  (adr/는 필요 시 추가)
 ```
@@ -89,7 +90,8 @@ Famlog/
 - 토큰은 Android Keystore로 암호화한 DataStore에 저장한다. 사진은 Photo Picker만, 위치는 포그라운드·대략적 위치 우선 (사양서 08 §8.6, 09 §9.5).
 - targetSdk는 Google Play 요구(API 36 이상)를 만족해야 한다. 현재 설정은 37.
 - 소셜 로그인 키는 `local.properties`의 `FAMLOG_KAKAO_NATIVE_APP_KEY`, `FAMLOG_GOOGLE_WEB_CLIENT_ID`(백엔드 `GOOGLE_CLIENT_ID`와 같은 웹 클라이언트) → BuildConfig. git에 올리지 않고, 비어 있으면 버튼이 "설정 필요"를 띄운다(CI).
-- 서버 주소는 `BuildConfig.API_BASE_URL`. 디버그는 에뮬레이터에서 로컬 서버(`http://10.0.2.2:8080/api/v1/`)로 간다.
+- 서버 주소는 `BuildConfig.API_BASE_URL`, 웹 페이지(계정 삭제 안내 등)는 `BuildConfig.WEB_BASE_URL`. 디버그는 에뮬레이터에서 로컬 서버(`http://10.0.2.2:8080/api/v1/`)로 간다.
+  릴리스는 `FAMLOG_RELEASE_API_BASE_URL`·`FAMLOG_RELEASE_WEB_BASE_URL`(필수)과 업로드 키(`FAMLOG_UPLOAD_*`, 없으면 서명 안 함)를 `local.properties`/환경 변수에서 읽는다.
 - 401 처리: `AUTH_TOKEN_EXPIRED`면 `TokenAuthenticator`가 재발급 후 1회 재시도, `AUTH_INVALID`·재발급 실패면 토큰 삭제 후 로그인 화면.
   재발급을 겹쳐 보내면 서버가 재사용으로 보고 모든 기기를 로그아웃시키므로, 재발급 경로를 따로 만들지 않는다.
 - 화면은 `FamTheme.colors`/`FamTheme.type`/`FamDimens`를 쓴다. Material 3 컴포넌트도 `FamLogTheme`이 토큰 색으로 연결해 둔다.
@@ -113,7 +115,7 @@ Famlog/
 ./gradlew :app:assembleDebug
 ./gradlew :app:testDebugUnitTest            # 단위 테스트 (CI와 같음)
 ./gradlew :app:connectedDebugAndroidTest    # Compose UI 테스트 (에뮬레이터·기기 필요)
-./gradlew :app:assembleRelease              # R8 릴리스 빌드 확인 (서명은 S22)
+./gradlew :app:assembleRelease              # R8 릴리스 빌드 확인 (릴리스 주소 필요, 업로드 키 없으면 서명 안 됨)
 
 # 로컬 서버 (백엔드 저장소에서): ./gradlew bootRun → http://localhost:8080/v3/api-docs
 ```

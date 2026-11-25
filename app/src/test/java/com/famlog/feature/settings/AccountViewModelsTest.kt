@@ -62,22 +62,22 @@ class AccountViewModelsTest {
     }
 
     @Test
-    fun 동의_내역은_아는_종류만_정해진_순서로_보이고_웹_삭제_안내는_서버_루트() = runTest(mainRule.dispatcher) {
+    fun 동의_내역은_아는_종류만_정해진_순서로_보이고_웹_삭제_안내는_웹_주소_아래() = runTest(mainRule.dispatcher) {
         coEvery { consents.all() } returns ApiResult.Success(
             listOf(consent(Consent.LOCATION), consent("MARKETING"), consent(Consent.TERMS), consent(Consent.AI_ANALYSIS, agreed = false)),
         )
 
-        val viewModel = PrivacyViewModel(consents, "http://10.0.2.2:8080/api/v1/")
+        val viewModel = PrivacyViewModel(consents, "https://famlog.kr/")
 
         assertEquals(listOf(Consent.TERMS, Consent.LOCATION, Consent.AI_ANALYSIS), viewModel.state.value.consents.map { it.type })
-        assertEquals("http://10.0.2.2:8080/account-deletion", viewModel.webDeletionUrl)
+        assertEquals("https://famlog.kr/account-deletion", viewModel.webDeletionUrl)
     }
 
     @Test
     fun 위치와_AI_분석만_철회할_수_있고_확인하면_철회한_뒤_다시_받는다() = runTest(mainRule.dispatcher) {
         coEvery { consents.all() } returns ApiResult.Success(listOf(consent(Consent.TERMS), consent(Consent.AI_ANALYSIS)))
         coEvery { consents.withdrawAiNotice() } returns ApiResult.Success(consent(Consent.AI_ANALYSIS, agreed = false))
-        val viewModel = PrivacyViewModel(consents, "http://x/api/v1/")
+        val viewModel = PrivacyViewModel(consents, "http://x/")
 
         viewModel.askWithdraw(Consent.TERMS)
         assertNull(viewModel.state.value.withdraw)
