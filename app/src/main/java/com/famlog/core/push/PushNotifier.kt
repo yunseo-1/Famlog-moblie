@@ -16,6 +16,7 @@ import androidx.core.app.Person
 import androidx.core.content.ContextCompat
 import com.famlog.MainActivity
 import com.famlog.R
+import com.famlog.core.common.RecentIds
 import com.famlog.core.model.MessageType
 import com.famlog.core.model.PushChannel
 import com.famlog.core.model.PushMessage
@@ -38,6 +39,9 @@ import javax.inject.Singleton
 class PushNotifier @Inject constructor(@ApplicationContext private val context: Context) {
 
     private val manager = NotificationManagerCompat.from(context)
+
+    /** FCM은 같은 메시지를 두 번 보낼 수 있다. 같은 messageId는 한 번만 쌓는다 */
+    private val shownChatMessages = RecentIds(CHAT_DEDUPE_CAPACITY)
 
     /** 앱 시작 때. 이미 있으면 이름만 바뀐다 */
     fun createChannels() {
@@ -92,6 +96,7 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
     }
 
     private fun showChat(message: PushMessage.Chat) {
+        if (!shownChatMessages.add(message.messageId)) return
         val tag = chatTag(message.groupId)
         val style = activeNotification(tag)
             ?.let { NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(it) }
@@ -266,6 +271,7 @@ class PushNotifier @Inject constructor(@ApplicationContext private val context: 
 
         /** 알림은 tag로 구분하고 id는 하나만 쓴다 (그룹 ID가 Int 범위를 넘어도 되게) */
         private const val ID_CHAT = 1
+        private const val CHAT_DEDUPE_CAPACITY = 200
         private const val CHAT_TAG_PREFIX = "chat:"
         private const val TAG_CHAT_SUMMARY = "summary:chat"
         private const val GROUP_CHAT = "com.famlog.CHAT"

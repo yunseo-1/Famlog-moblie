@@ -44,9 +44,9 @@ Google Play 출시가 목표다 (v1.0 목표: 2027년 2월 중순).
 | 영역 | 선택 |
 |---|---|
 | 앱 | Kotlin, Jetpack Compose, MVVM + Hilt, Retrofit/OkHttp, STOMP, Room, Coil, Kakao Map SDK, Photo Picker, FCM. minSdk 26 / **targetSdk 37** (compileSdk 37) |
-| 서버 | Java 21, Spring Boot 3, Spring Security(JWT), WebSocket(STOMP), JPA + QueryDSL, Flyway |
-| 워커 | Python 3.12, FastAPI, Redis Streams consumer (AI 인식·미디어·영상) |
-| 데이터 | PostgreSQL 16 + PostGIS + pgvector, Redis 7, S3(로컬은 MinIO) |
+| 서버 | Java 21, Spring Boot 4.1, Spring Security(JWT), WebSocket(STOMP), JPA + JdbcTemplate(조회·집계), Flyway |
+| 워커 | Python 3.12, Redis Streams consumer (AI 인식은 Claude API, 미디어 썸네일·EXIF) |
+| 데이터 | PostgreSQL 16 + PostGIS + pgvector, Redis 7, S3 호환 저장소(로컬은 SeaweedFS) |
 | 인프라 | Docker Compose (MVP), GitHub Actions |
 
 ## 5. 저장소 구조

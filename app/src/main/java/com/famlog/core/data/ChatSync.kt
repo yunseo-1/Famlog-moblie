@@ -72,6 +72,8 @@ class ChatSync @Inject constructor(
             sessionEvents.events.collect { event ->
                 if (event == SessionEvent.LoggedOut) {
                     socket.disconnect()
+                    // 다시 로그인해 같은 그룹 목록을 받아도 StateFlow가 같은 값이라 깨우지 못하므로 비워 둔다
+                    groupRepository.clear()
                     chatRepository.clear()
                     candidateRepository.clear()
                 }
