@@ -115,7 +115,7 @@
 - 로그인 화면은 자리만 있다 (`feature/auth/LoginScreen.kt`). 세션 만료 이벤트가 오면 이 화면으로 간다.
 - 백엔드 인수인계(S0~S5) 중 S7에서 반영할 것: 로그인 응답 404 `USER_NOT_REGISTERED` → 약관·닉네임·출생연월 화면 후 `/auth/{provider}/signup`,
   Google `setServerClientId`는 백엔드 `infra/.env`의 웹 클라이언트 ID, 그룹 응답의 `familyRole`이 비어 있으면 SCR-03 안내.
-- 릴리스 서버 주소는 자리 값(`https://api.famlog.invalid/`). S22에서 교체.
+- 릴리스 서버 주소는 S22에서 `FAMLOG_RELEASE_API_BASE_URL`로 바꿨다(아래 S22 메모).
 - 폰트 라이선스: `app/src/main/assets/licenses/OFL-NotoSansKR.txt`. 앱 안 오픈소스 라이선스 화면은 S20·S22에서.
 - 문서 레포의 `docs/api/openapi.yaml`이 아직 비어 있다. S7은 `Famlog-BE`의 `AuthDtos`·`GroupDtos` 코드를 계약으로 썼다. S8 전에 생성해 커밋할 것.
 
@@ -438,6 +438,24 @@
 - 실기(2026-11-23, 에뮬레이터 PIN 1234를 걸었다가 끝나고 지움): 켜기(PIN) → 30초 뒤 복귀는 그대로·70초 뒤 복귀는 잠김 → 취소하면 잠금 화면 → [잠금 해제]+PIN으로 풀림,
   앱 새로 열 때 잠김, 홈을 거친 최근 앱 미리보기는 빈 화면, 끄기(PIN), 화면 잠금이 없으면 안내 대화상자.
 
+### S22 메모 (출시 준비, 앱)
+- 릴리스 값은 `local.properties` 또는 CI 환경 변수에서 읽는다. `FAMLOG_RELEASE_API_BASE_URL`(`https://api.famlog.kr/api/v1/`), `FAMLOG_RELEASE_WEB_BASE_URL`(`https://famlog.kr/`)과
+  소셜 키 두 개가 비었거나 형식이 틀리면 `preReleaseBuild`에서 빌드를 멈춘다. 디버그 빌드·CI 단위 테스트는 영향 없음.
+- 웹 주소(`BuildConfig.WEB_BASE_URL`, `@WebBaseUrl`)를 API 주소와 나눴다. 계정 삭제 안내 = 웹 주소 + `account-deletion`. 디버그는 `FAMLOG_WEB_BASE_URL` 또는 API 서버 루트.
+- 서명: `FAMLOG_UPLOAD_STORE_FILE`·`_STORE_PASSWORD`·`_KEY_ALIAS`·`_KEY_PASSWORD`가 있으면 업로드 키로 서명, 없으면 서명 안 된 결과물(로컬 R8 확인용).
+  키스토어·비밀번호는 사용자가 만들고 보관한다(저장소·로그에 남기지 않음).
+- 버전: `versionName` 1.0.0(손으로 올림), `versionCode`는 `FAMLOG_VERSION_CODE`(CI 실행 번호 + 100, 로컬은 1).
+- 백업: `allowBackup=false` + `dataExtractionRules`(12+ 클라우드 백업·기기 간 이전 전부 제외) + `fullBackupContent`(8~11).
+- 네트워크: main `network_security_config`(평문 금지, 시스템 인증서만). 디버그는 `src/debug`의 같은 이름 파일이 덮어써서 10.0.2.2·localhost만 평문 허용.
+- CI: `.github/workflows/release.yml`(수동 실행·`v*` 태그) → 단위 테스트 + 서명 AAB → 내부 테스트 트랙(`r0adkll/upload-google-play` v1.1.5 커밋 고정), AAB·mapping.txt 보관.
+  첫 AAB는 Play Console에 직접 올린다. 앱이 초안 상태인 동안은 수동 실행에서 status `draft`.
+- 확인(2026-11-25): 단위 테스트 389개 통과, 값 없이 `bundleRelease` → 실패 메시지, 운영 값 + 임시 키로 `bundleRelease`·`assembleRelease` 성공(apksigner 서명 확인, 임시 키는 삭제),
+  키 없이 → `jar is unsigned`, 병합 매니페스트에 versionCode·백업·네트워크 설정 들어감.
+- 사용자 할 일: 업로드 키 생성, Play Console 앱 생성(패키지명 `com.famlog` 사용 가능 여부 — 첫 업로드 뒤 못 바꿈), Play App Signing,
+  서비스 계정(JSON) → GitHub Secrets·Variables(목록은 release.yml 머리말), 첫 AAB 수동 업로드.
+  Play 앱 서명 키·업로드 키의 SHA-1 → Google Cloud 콘솔 Android 클라이언트, 키 해시 → 카카오 콘솔, SHA-256 → 백엔드(assetlinks.json, S22-2).
+- 다음: GRP-02 초대 링크 App Links(`https://famlog.kr/invite/{code}`, autoVerify) — `famlog.kr`에 assetlinks.json이 올라간 뒤.
+
 ## 7. 오픈 이슈
 
 사양서 19장이 기준이다. 모바일에 직접 영향이 있는 것:
@@ -474,5 +492,6 @@
 | 2026-11-23 | AUTH-03 앱 | 로그인 기기 관리: 개인정보·보안 > 로그인 기기(이 기기 표시, 다른 기기 원격 로그아웃), 새 기기 로그인 알림 → 화면 | feat(AUTH-03) |
 | 2026-11-23 | SET-02 | 알림 설정: 설정 > 알림(미리보기 숨기기, 방해 금지 시간, 그룹별 알림 끄기, 기기 알림 설정 열기) | feat(SET-02) |
 | 2026-11-23 | SEC-01 | 앱 잠금: 설정 > 앱 잠금(지문·얼굴·휴대폰 잠금), 앱을 열 때·1분 넘게 나갔다 오면 잠금, 최근 앱 미리보기 가리기, 로그아웃 시 끔 | feat(SEC-01) |
+| 2026-11-25 | S22 앱 | 출시 준비: 릴리스 주소·웹 주소 필수화(계정 삭제 안내 famlog.kr), 업로드 키 서명, versionCode CI 번호, 백업·기기 이전 제외, 평문 금지, Play 내부 테스트 CI | chore(S22) |
 | 2026-11-25 | S20 후속 | 로그아웃 후 같은 계정 재로그인 시 실시간 연결이 안 열리던 문제(로그아웃 때 그룹 목록 비움), 채팅 푸시 같은 messageId 한 번만, 로그인 기기에서 이 기기 "마지막 사용" 숨김 | fix(CHAT-02) |
 | 2026-11-20 | S19-1 | 채팅 후보 카드(근거 인용·추정 배지·AI 제안), Resolved Chip·5분 되돌리기, 수정 시트(SCR-13), 무시 사유, candidate.* 실시간, 원문 강조, 지운 시스템 메시지 숨김 | feat(ARC-05) |

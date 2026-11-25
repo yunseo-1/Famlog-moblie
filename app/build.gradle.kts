@@ -18,6 +18,15 @@ fun secret(name: String): String = localProperties.getProperty(name) ?: System.g
 val kakaoNativeAppKey = secret("FAMLOG_KAKAO_NATIVE_APP_KEY")
 val googleWebClientId = secret("FAMLOG_GOOGLE_WEB_CLIENT_ID")
 
+/**
+ * 릴리스(S22) 값. local.properties 또는 CI 환경 변수에서 읽는다.
+ * - 주소 두 개와 소셜 키는 릴리스 빌드에 꼭 있어야 한다. 비어 있으면 preReleaseBuild에서 빌드를 멈춘다
+ * - 업로드 키가 없으면 서명하지 않은 AAB/APK가 나온다 (로컬 R8 확인용)
+ */
+val releaseApiBaseUrl = secret("FAMLOG_RELEASE_API_BASE_URL")
+val releaseWebBaseUrl = secret("FAMLOG_RELEASE_WEB_BASE_URL")
+val uploadStoreFile = secret("FAMLOG_UPLOAD_STORE_FILE")
+
 android {
     namespace = "com.famlog"
     compileSdk {
@@ -28,8 +37,9 @@ android {
         applicationId = "com.famlog"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        // CI(release.yml)가 실행 번호로 넣는다. 로컬 빌드는 1
+        versionCode = secret("FAMLOG_VERSION_CODE").toIntOrNull() ?: 1
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -40,16 +50,32 @@ android {
         manifestPlaceholders["kakaoScheme"] = "kakao" + kakaoNativeAppKey.ifBlank { "unset" }
     }
 
+    signingConfigs {
+        if (uploadStoreFile.isNotBlank()) {
+            create("upload") {
+                storeFile = file(uploadStoreFile)
+                storePassword = secret("FAMLOG_UPLOAD_STORE_PASSWORD")
+                keyAlias = secret("FAMLOG_UPLOAD_KEY_ALIAS")
+                keyPassword = secret("FAMLOG_UPLOAD_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // 에뮬레이터에서 로컬 서버(bootRun) 접속. 평문 HTTP는 src/debug network security config에서만 허용
             // 실기기(USB + adb reverse tcp:8080 tcp:8080)는 local.properties FAMLOG_API_BASE_URL=http://localhost:8080/api/v1/
             val apiBaseUrl = secret("FAMLOG_API_BASE_URL").ifBlank { "http://10.0.2.2:8080/api/v1/" }
             buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+            // 웹 페이지(계정 삭제 안내 등). 로컬은 API 서버 루트가 웹 페이지도 제공한다
+            val webBaseUrl = secret("FAMLOG_WEB_BASE_URL").ifBlank { apiBaseUrl.substringBefore("api/v1/") }
+            buildConfigField("String", "WEB_BASE_URL", "\"$webBaseUrl\"")
         }
         release {
-            // TODO(S22): 운영 서버 주소 확정 후 교체
-            buildConfigField("String", "API_BASE_URL", "\"https://api.famlog.invalid/api/v1/\"")
+            // 운영: https://api.famlog.kr/api/v1/ , 웹: https://famlog.kr/ (사양서 17, 백엔드 S22)
+            buildConfigField("String", "API_BASE_URL", "\"$releaseApiBaseUrl\"")
+            buildConfigField("String", "WEB_BASE_URL", "\"$releaseWebBaseUrl\"")
+            signingConfig = signingConfigs.findByName("upload")
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
@@ -63,6 +89,21 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+/** 릴리스 빌드를 시작할 때만 검사한다. 디버그 빌드·CI 단위 테스트에는 영향 없음 */
+val releaseProblems = buildList {
+    if (!releaseApiBaseUrl.matches(Regex("https://.+/api/v1/"))) add("FAMLOG_RELEASE_API_BASE_URL (https://…/api/v1/)")
+    if (!releaseWebBaseUrl.matches(Regex("https://.+/"))) add("FAMLOG_RELEASE_WEB_BASE_URL (https://…/)")
+    if (kakaoNativeAppKey.isBlank()) add("FAMLOG_KAKAO_NATIVE_APP_KEY")
+    if (googleWebClientId.isBlank()) add("FAMLOG_GOOGLE_WEB_CLIENT_ID")
+}
+tasks.named { it == "preReleaseBuild" }.configureEach {
+    // 스크립트 속성을 직접 잡으면 configuration cache에 저장할 수 없어 지역 값으로 복사한다
+    val problems = releaseProblems.toList()
+    doFirst {
+        check(problems.isEmpty()) { "릴리스 빌드에 필요한 값이 없거나 형식이 틀렸습니다: ${problems.joinToString()}" }
     }
 }
 

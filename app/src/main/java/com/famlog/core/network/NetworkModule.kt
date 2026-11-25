@@ -36,6 +36,11 @@ annotation class UploadClient
 @Retention(AnnotationRetention.BINARY)
 annotation class ApiBaseUrl
 
+/** 웹 페이지 주소 (…/). 운영은 API와 다른 호스트(famlog.kr) */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class WebBaseUrl
+
 /** 앱 버전 이름 (X-App-Version, 푸시 토큰 등록) */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -177,6 +182,10 @@ object NetworkModule {
     @Provides
     @ApiBaseUrl
     fun provideApiBaseUrl(): String = BuildConfig.API_BASE_URL
+
+    @Provides
+    @WebBaseUrl
+    fun provideWebBaseUrl(): String = BuildConfig.WEB_BASE_URL
 
     /** 동영상 500MB까지 올리므로 쓰기 시간 제한을 넉넉히 둔다 */
     @Provides

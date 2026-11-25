@@ -12,8 +12,8 @@ import com.famlog.core.model.ApiResult
 import com.famlog.core.model.Consent
 import com.famlog.core.model.ErrorCodes
 import com.famlog.core.model.errorCode
-import com.famlog.core.network.ApiBaseUrl
 import com.famlog.core.network.AppVersion
+import com.famlog.core.network.WebBaseUrl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -80,11 +80,11 @@ data class PrivacyUiState(
 @HiltViewModel
 class PrivacyViewModel @Inject constructor(
     private val consentRepository: ConsentRepository,
-    @ApiBaseUrl baseUrl: String,
+    @WebBaseUrl webBaseUrl: String,
 ) : ViewModel() {
 
-    /** 웹 계정 삭제 안내 (WEB-01, Google Play 요건). API 주소의 서버 루트 */
-    val webDeletionUrl: String = baseUrl.substringBefore("api/v1/") + "account-deletion"
+    /** 웹 계정 삭제 안내 (WEB-01, Google Play 요건). 운영은 https://famlog.kr/account-deletion */
+    val webDeletionUrl: String = webBaseUrl + "account-deletion"
 
     private val _state = MutableStateFlow(PrivacyUiState())
     val state: StateFlow<PrivacyUiState> = _state.asStateFlow()

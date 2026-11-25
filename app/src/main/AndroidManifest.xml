@@ -10,10 +10,17 @@
     <!-- 내 주변 장소 (PLC-04). 대략적 위치만, 백그라운드 위치는 요청하지 않는다 (사양서 8.6) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- allowBackup=false: 토큰·캐시가 기기 백업에 들어가지 않게 한다 (사양서 9.5) -->
+    <!--
+        allowBackup=false: 토큰·캐시가 기기 백업에 들어가지 않게 한다 (사양서 9.5).
+        Android 12+는 allowBackup과 상관없이 기기 간 이전을 하므로 dataExtractionRules로 전부 뺀다. 8~11은 fullBackupContent.
+        networkSecurityConfig: 평문 HTTP 금지 (8~8.1은 기본값이 허용이라 명시). 디버그는 같은 이름의 파일로 로컬 서버만 허용
+    -->
     <application
         android:name=".FamlogApp"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
