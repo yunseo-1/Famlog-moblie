@@ -14,8 +14,8 @@ DB: PostgreSQL 16 + PostGIS + pgvector. 스키마 변경은 Flyway 마이그레�
 | 자동 등록 | registration_candidates, candidate_evidence, suggestion_feedback, ai_jobs | ✅ |
 | 운영 | reports, holidays, app_versions, feature_flags, location_access_logs | ✅ |
 | 차별화 | polls, poll_options, poll_votes, checkins | 🟦 |
-| 앨범·영상 | albums, album_assets, videos, bgm_tracks, youtube_uploads, oauth_tokens | 🟦 |
-| 스토리·공유 | stories, story_sources, share_links | 🟦 |
+| 앨범·영상 | albums, album_assets, videos, bgm_tracks ✅ / youtube_uploads, oauth_tokens 🟦 v1.2 | ✅ |
+| 스토리·공유 | stories, story_sources ✅ / share_links 🟦 v1.1 | ✅ |
 | AI 비서 | assistant_threads, assistant_messages, recommendations, message_chunks(임베딩) | 🟦 |
 
 ## 10.2 주요 테이블 컬럼
@@ -30,7 +30,7 @@ DB: PostgreSQL 16 + PostGIS + pgvector. 스키마 변경은 Flyway 마이그레�
 | group_members | group_id, user_id, role(OWNER/ADMIN/MEMBER), family_role, family_title, calendar_color, ai_opt_out, last_read_seq, notif_muted, joined_at, left_at — UNIQUE(group_id, user_id) |
 | group_invites | group_id, code UNIQUE, created_by, expires_at, revoked_at, use_count |
 | messages | id, room_id, seq(BIGINT, 방별 증가), sender_id NULL(시스템), client_message_id, type(TEXT/IMAGE/VIDEO/VOICE/PLACE/SYSTEM/CANDIDATE/POLL), body, payload(JSONB), reply_to_id, deleted_at — UNIQUE(room_id, seq), UNIQUE(sender_id, client_message_id) |
-| media_assets | id, group_id, uploader_id, message_id, media_type, mime, size, storage_key, variants(JSONB 썸네일), width, height, duration_sec, taken_at, location(geography NULL), scan_status, phash, blur_score |
+| media_assets | id, group_id, uploader_id, message_id, media_type, mime, size, storage_key, variants(JSONB 썸네일), width, height, duration_sec, taken_at, location(geography NULL), scan_status, phash, blur_score — media_type에 AUDIO 추가(영상 BGM용, 렌더링 후 삭제) |
 | schedules | id, group_id, title, starts_at, ends_at, all_day, rrule, calendar_type(SOLAR/LUNAR), lunar_month_day, place_id, memo, created_by, version |
 | schedule_participants | schedule_id, user_id — PK(schedule_id, user_id), INDEX(user_id) |
 | todos | id, group_id, kind(TASK/SHOPPING), title, assignee_id, due_date, done_at, done_by, created_by, version |

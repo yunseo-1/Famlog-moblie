@@ -1,8 +1,8 @@
-# FamLog 통합 사양서 v2.0 — 색인
+# FamLog 통합 사양서 v2.1 — 색인
 
 > 이 폴더는 FamLog 개발 기준 문서(Single Source of Truth)다.
 > **원본은 `famlog/docs/spec/`**이고, `famlog-backend/`와 `famlog-mobile/`의 `docs/spec/`은 `famlog/scripts/sync-spec.sh`로 복사한 사본이다.
-> 사본에서는 내용을 고치지 않는다. 사양 변경은 원본(그리고 Notion 통합 사양서)을 먼저 고친 뒤 동기화한다.
+> 사본에서는 내용을 고치지 않는다. 사양 변경은 원본(이 폴더의 Markdown)을 먼저 고친 뒤 동기화한다. Notion 통합 사양서는 v1.0 기록으로만 남는다.
 
 ## 장 목록
 
@@ -42,7 +42,7 @@
 | SCH, TODO | 04 §4.3 | 10 schedules·todos·holidays |
 | PLC | 04 §4.4 | 08 §8.6 위치정보, 10 places·place_aliases |
 | ARC (자동 등록) | 04 §4.5 | **06 전체**, 07 AI 공통, 09 §9.7 프롬프트 인젝션 |
-| ALB, VID, STORY | 04 §4.6~4.7 (v1.1) | 07, 08 §8.7 |
+| ALB, VID, STORY | 04 §4.6~4.7 (v1.0, S23~S25) | 07, 08 §8.7 |
 | AST | 04 §4.8 (v1.2) | 07, 09 §9.7 |
 | DIF | 05 차별화 기능 | 해당 기능의 4장 ID |
 | SCR-xx (화면) | 03 화면 목록 | `famlog/docs/design/figma-map.md` |

@@ -11,10 +11,11 @@ Google Play 출시가 목표다 (v1.0 목표: 2027년 2월 중순).
 
 ## 2. 문서 우선순위 (충돌 시 위가 이긴다)
 
-1. **통합 사양서 v2.0** — 개발 기준 문서. 기능 ID, API, 데이터, 보안, 인수 기준이 모두 여기 있다.
+1. **통합 사양서 v2.1** — 개발 기준 문서. 기능 ID, API, 데이터, 보안, 인수 기준이 모두 여기 있다.
    - 로컬 사본: **`docs/spec/`** (장별 Markdown 21개). 색인·"기능 ID → 읽을 곳" 표는 `docs/spec/README.md`
    - 이 폴더는 사본이다. **여기서 직접 고치지 않는다.** 원본은 문서 레포(`yunseo-1/Famlog`)의 `docs/spec/`이고,
-     사양 변경은 Notion(page id `416fc8bd-3e5e-8128-aab8-dc6d43bbd7f2`) → 문서 레포 → `scripts/sync-spec.sh` 순서로 반영한다.
+     사양 변경은 문서 레포 `docs/spec/`(v2.1부터 원본) → PR 머지 → 이 저장소로 동기화(`scripts/sync-spec.sh` 또는 같은 rsync, docx 제외) 순서로 반영한다.
+     Notion 통합 사양서(page id `416fc8bd-3e5e-8128-aab8-dc6d43bbd7f2`)는 v1.0 기록이라 고치지 않는다.
    - 사양과 다르게 구현해야 하거나 사양이 애매하면 **구현 전에 질문**한다. 추측해서 채우지 않는다.
    - 경로 읽는 법: 사양서의 `famlog-mobile/` = 이 저장소. 사양서 13.3은 `core/*`, `feature/*`를 Gradle 모듈로 그렸지만, 지금은 `:app` 안의 **패키지**로 나눈다(5장). `../docs/...` 경로는 문서 레포(`yunseo-1/Famlog`)를 뜻한다.
 2. **Figma 화면 지도** — `docs/design/figma-map.md` (노드 ID, 화면 구조, 컴포넌트, 토큰)
